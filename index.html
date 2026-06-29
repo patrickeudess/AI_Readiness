@@ -1144,9 +1144,24 @@ function renderStep9() {
         <div class="metric"><div class="val" style="color:${APP.aiScore.level[1]}">${APP.aiScore.total}/100</div><div class="label">AI Readiness</div></div>
     </div>`;
 
+    html += `<div class="card"><h3>Format de sortie des données</h3>
+        <div class="form-row" style="align-items:center;gap:1.5rem;margin-bottom:1rem">
+            <div class="form-group">
+                <label>Format des données corrigées :</label>
+                <select id="export-format" onchange="onExportFormatChange()">
+                    <option value="csv">CSV (.csv)</option>
+                    <option value="xlsx">Excel (.xlsx)</option>
+                </select>
+            </div>
+            <div class="form-group" id="format-option-wrap" style="display:none">
+                <label style="cursor:pointer"><input type="checkbox" id="export-styling" style="margin-right:.4rem">Appliquer la mise en forme (en-têtes colorés, colonnes ajustées, bordures)</label>
+            </div>
+        </div>
+    </div>`;
+
     html += `<div class="card"><h3>Contenu du dossier d'export</h3>
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:.5rem">
-            <div class="issue info">📄 Base de données corrigée (CSV)</div>
+            <div class="issue info" id="export-data-label">📄 Base de données corrigée (CSV)</div>
             <div class="issue info">📋 Métadonnées (JSON)</div>
             <div class="issue info">📖 Dictionnaire de données (CSV)</div>
             <div class="issue info">🔍 Rapport qualité (JSON)</div>
@@ -1159,7 +1174,7 @@ function renderStep9() {
 
     html += `<div style="display:flex;gap:1rem;flex-wrap:wrap;margin-top:1rem">
         <button class="btn btn-primary" style="font-size:1.1rem;padding:.8rem 2rem" onclick="exportZip()">📦 Télécharger le dossier complet (ZIP)</button>
-        <button class="btn btn-secondary" onclick="exportCSV()">📄 Données corrigées (CSV)</button>
+        <button class="btn btn-secondary" onclick="exportData()">📄 Données corrigées seules</button>
         <button class="btn btn-secondary" onclick="exportWord()">📝 Rapport des modifications (Word)</button>
     </div>`;
 
@@ -1167,8 +1182,57 @@ function renderStep9() {
     return html;
 }
 
+function onExportFormatChange() {
+    const fmt = document.getElementById('export-format').value;
+    document.getElementById('format-option-wrap').style.display = fmt === 'xlsx' ? '' : 'none';
+    const label = document.getElementById('export-data-label');
+    label.textContent = fmt === 'xlsx' ? '📄 Base de données corrigée (Excel)' : '📄 Base de données corrigée (CSV)';
+}
+
 function dataToCSV() {
     return Papa.unparse(APP.data, { columns: APP.columns });
+}
+
+function buildExcelBuffer(withStyle) {
+    const ws = XLSX.utils.json_to_sheet(APP.data, { header: APP.columns });
+    if (withStyle) {
+        const range = XLSX.utils.decode_range(ws['!ref']);
+        const colWidths = APP.columns.map(c => {
+            let max = c.length;
+            for (const row of APP.data) {
+                const v = row[c];
+                if (v != null) max = Math.max(max, String(v).length);
+            }
+            return { wch: Math.min(max + 2, 40) };
+        });
+        ws['!cols'] = colWidths;
+        for (let C = range.s.c; C <= range.e.c; C++) {
+            const addr = XLSX.utils.encode_cell({ r: 0, c: C });
+            if (!ws[addr]) continue;
+            ws[addr].s = {
+                font: { bold: true, color: { rgb: 'FFFFFF' } },
+                fill: { fgColor: { rgb: '1B5E20' } },
+                alignment: { horizontal: 'center' },
+                border: { bottom: { style: 'thin', color: { rgb: '000000' } } }
+            };
+        }
+    }
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Données');
+    return XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+}
+
+function exportData() {
+    const fmt = document.getElementById('export-format').value;
+    if (fmt === 'xlsx') {
+        const styled = document.getElementById('export-styling').checked;
+        const buf = buildExcelBuffer(styled);
+        const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        saveAs(blob, 'donnees_corrigees.xlsx');
+    } else {
+        const blob = new Blob([dataToCSV()], { type: 'text/csv;charset=utf-8;' });
+        saveAs(blob, 'donnees_corrigees.csv');
+    }
 }
 
 function buildWordReport() {
@@ -1261,11 +1325,6 @@ p{font-size:11pt;line-height:1.5;margin:4pt 0}
     return doc;
 }
 
-function exportCSV() {
-    const blob = new Blob([dataToCSV()], { type: 'text/csv;charset=utf-8;' });
-    saveAs(blob, 'donnees_corrigees.csv');
-}
-
 function exportWord() {
     const blob = new Blob(['﻿' + buildWordReport()], { type: 'application/msword;charset=utf-8;' });
     saveAs(blob, 'rapport_modifications.doc');
@@ -1273,7 +1332,13 @@ function exportWord() {
 
 function exportZip() {
     const zip = new JSZip();
-    zip.file('donnees_corrigees.csv', dataToCSV());
+    const fmt = document.getElementById('export-format').value;
+    if (fmt === 'xlsx') {
+        const styled = document.getElementById('export-styling').checked;
+        zip.file('donnees_corrigees.xlsx', buildExcelBuffer(styled));
+    } else {
+        zip.file('donnees_corrigees.csv', dataToCSV());
+    }
     zip.file('metadonnees.json', JSON.stringify(APP.metadata, null, 2));
 
     const dictRows = APP.columns.map(c => {
