@@ -3,1377 +3,1230 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AgriAI-Readiness — Évaluation des données agricoles</title>
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<title>AgriData Ready — From Raw Data to FAIR & AI-Ready Data</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌾</text></svg>">
+<script src="libs/papaparse.min.js"></script>
+<script src="libs/xlsx.full.min.js"></script>
+<script src="libs/jszip.min.js"></script>
+<script src="libs/FileSaver.min.js"></script>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Outfit:wght@300;400;500;600;700&display=swap');
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;color:#333;background:#f5f6fa;min-height:100vh;display:flex}
+:root{--primary:#1B5E20;--primary-light:#4CAF50;--accent:#FF6F00;--danger:#C62828;--warn:#F57F17;--bg:#f5f6fa;--card:#fff;--radius:10px}
 
-:root {
-  --bleu:    #1B2F5E;
-  --bleu2:   #2952A3;
-  --bleu3:   #E8F0FD;
-  --vert:    #0F5132;
-  --vert2:   #D1FAE5;
-  --orange:  #92400E;
-  --orange2: #FEF3C7;
-  --rouge:   #7F1D1D;
-  --rouge2:  #FEE2E2;
-  --gris:    #F8F9FB;
-  --border:  #E2E8F0;
-  --text:    #0F172A;
-  --muted:   #64748B;
-  --white:   #FFFFFF;
-  --mono:    'DM Mono', monospace;
-  --sans:    'Outfit', sans-serif;
-}
+/* Sidebar */
+.sidebar{width:260px;background:linear-gradient(180deg,#1B5E20 0%,#2E7D32 100%);color:#fff;padding:1.5rem 1rem;position:fixed;top:0;left:0;bottom:0;overflow-y:auto;z-index:100}
+.sidebar h1{font-size:1.3rem;text-align:center;margin-bottom:.3rem}
+.sidebar .slogan{font-size:.75rem;text-align:center;opacity:.8;font-style:italic;margin-bottom:1.5rem}
+.sidebar .nav-item{display:flex;align-items:center;gap:.6rem;padding:.6rem .8rem;border-radius:8px;cursor:pointer;margin-bottom:.3rem;font-size:.85rem;transition:all .2s;color:rgba(255,255,255,.7)}
+.sidebar .nav-item:hover{background:rgba(255,255,255,.15);color:#fff}
+.sidebar .nav-item.active{background:rgba(255,255,255,.25);color:#fff;font-weight:700}
+.sidebar .nav-item.done{color:#A5D6A7}
+.sidebar .nav-item .num{width:24px;height:24px;border-radius:50%;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:.75rem;font-weight:700;flex-shrink:0}
+.sidebar .nav-item.active .num{background:#fff;color:#1B5E20}
+.sidebar .nav-item.done .num{background:#A5D6A7;color:#1B5E20}
+.sidebar .file-info{margin-top:1.5rem;padding-top:1rem;border-top:1px solid rgba(255,255,255,.2);font-size:.78rem;opacity:.8}
+.sidebar .file-info p{margin:.2rem 0}
 
-* { box-sizing: border-box; margin: 0; padding: 0; }
+/* Main */
+.main{margin-left:260px;flex:1;padding:1.5rem 2rem 3rem;min-height:100vh}
+.step-view{display:none}
+.step-view.active{display:block}
 
-body {
-  font-family: var(--sans);
-  background: #F1F5FB;
-  color: var(--text);
-  min-height: 100vh;
-}
+/* Header */
+.page-header{background:linear-gradient(135deg,#1B5E20 0%,#2E7D32 50%,#43A047 100%);color:#fff;padding:1.5rem 2rem;border-radius:var(--radius);margin-bottom:1.5rem;text-align:center}
+.page-header h2{font-size:1.5rem;margin-bottom:.3rem}
+.page-header p{opacity:.85;font-size:.9rem}
 
-/* ── Layout ── */
-.shell { display: grid; grid-template-columns: 260px 1fr; min-height: 100vh; }
+/* Cards & metrics */
+.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1rem;margin-bottom:1.5rem}
+.metric{background:var(--card);border-radius:var(--radius);padding:1rem;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,.06);border-top:4px solid var(--primary-light)}
+.metric .val{font-size:1.8rem;font-weight:800;color:var(--primary)}
+.metric .label{font-size:.7rem;color:#888;text-transform:uppercase;letter-spacing:.05em}
 
-.sidebar {
-  background: var(--bleu);
-  padding: 2rem 1.5rem;
-  display: flex;
-  flex-direction: column;
-  gap: 2rem;
-  position: sticky;
-  top: 0;
-  height: 100vh;
-  overflow-y: auto;
-}
+.card{background:var(--card);border-radius:var(--radius);padding:1.2rem;box-shadow:0 2px 8px rgba(0,0,0,.06);margin-bottom:1rem}
+.card h3{color:var(--primary);font-size:1rem;margin-bottom:.8rem;padding-bottom:.4rem;border-bottom:2px solid #E8F5E9}
 
-.main { padding: 2rem; overflow-x: hidden; }
+/* Table */
+.table-wrap{overflow-x:auto;margin:.8rem 0;max-height:500px;overflow-y:auto}
+table{width:100%;border-collapse:collapse;font-size:.82rem}
+th{background:var(--primary);color:#fff;padding:.5rem .6rem;text-align:left;position:sticky;top:0;z-index:1}
+td{padding:.4rem .6rem;border-bottom:1px solid #eee}
+tr:nth-child(even){background:#f9f9f9}
+tr:hover{background:#E8F5E9}
+td input,td select{border:1px solid #ddd;border-radius:4px;padding:2px 4px;font-size:.8rem;width:100%}
+td input:focus{outline:none;border-color:var(--primary-light);box-shadow:0 0 0 2px rgba(76,175,80,.2)}
 
-/* ── Sidebar ── */
-.logo {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-.logo-icon {
-  width: 36px; height: 36px;
-  background: rgba(255,255,255,0.15);
-  border-radius: 10px;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 18px;
-}
-.logo h1 { font-size: 16px; font-weight: 600; color: #fff; line-height: 1.2; }
-.logo p  { font-size: 10px; color: rgba(255,255,255,0.55); margin-top: 1px; }
+/* Buttons */
+.btn{display:inline-flex;align-items:center;gap:.4rem;padding:.5rem 1.2rem;border-radius:8px;border:none;font-size:.85rem;font-weight:600;cursor:pointer;transition:all .2s}
+.btn-primary{background:var(--primary);color:#fff}
+.btn-primary:hover{background:#2E7D32;transform:translateY(-1px)}
+.btn-secondary{background:#E8F5E9;color:var(--primary)}
+.btn-secondary:hover{background:#C8E6C9}
+.btn-danger{background:#FFEBEE;color:var(--danger)}
+.btn-danger:hover{background:#FFCDD2}
+.btn-accent{background:var(--accent);color:#fff}
+.btn-accent:hover{background:#E65100}
+.btn-sm{padding:.3rem .8rem;font-size:.78rem}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn-group{display:flex;gap:.5rem;flex-wrap:wrap}
 
-.upload-zone {
-  border: 1.5px dashed rgba(255,255,255,0.3);
-  border-radius: 12px;
-  padding: 1.2rem;
-  text-align: center;
-  cursor: pointer;
-  transition: all .2s;
-  background: rgba(255,255,255,0.05);
-}
-.upload-zone:hover { background: rgba(255,255,255,0.12); border-color: rgba(255,255,255,0.6); }
-.upload-zone input { display: none; }
-.upload-zone .up-icon { font-size: 28px; margin-bottom: .4rem; }
-.upload-zone p { font-size: 12px; color: rgba(255,255,255,0.7); line-height: 1.5; }
-.upload-zone strong { color: #fff; }
+/* Navigation buttons */
+.nav-buttons{display:flex;justify-content:space-between;margin-top:2rem;padding-top:1rem;border-top:2px solid #eee}
 
-.sheet-select { display: none; }
-.sheet-select label { font-size: 11px; color: rgba(255,255,255,0.55); display: block; margin-bottom: 6px; text-transform: uppercase; letter-spacing: .06em; }
-.sheet-select select {
-  width: 100%;
-  background: rgba(255,255,255,0.1);
-  border: 1px solid rgba(255,255,255,0.2);
-  color: #fff;
-  padding: 7px 10px;
-  border-radius: 8px;
-  font-family: var(--sans);
-  font-size: 12px;
-  outline: none;
-}
-.sheet-select select option { background: var(--bleu); }
+/* Forms */
+.form-group{margin-bottom:.8rem}
+.form-group label{display:block;font-weight:600;font-size:.82rem;color:#555;margin-bottom:.2rem}
+.form-group input,.form-group select,.form-group textarea{width:100%;padding:.4rem .6rem;border:1px solid #ddd;border-radius:6px;font-size:.85rem;font-family:inherit}
+.form-group input:focus,.form-group select:focus,.form-group textarea:focus{outline:none;border-color:var(--primary-light);box-shadow:0 0 0 2px rgba(76,175,80,.2)}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
 
-.sidebar-refs {
-  margin-top: auto;
-  font-size: 10px;
-  color: rgba(255,255,255,0.4);
-  line-height: 1.6;
-}
-.sidebar-refs strong { color: rgba(255,255,255,0.6); display: block; margin-bottom: 4px; }
+/* Issues */
+.issue{padding:.5rem .8rem;border-radius:0 8px 8px 0;margin:.3rem 0;font-size:.83rem;display:flex;align-items:center;gap:.5rem}
+.issue.critical{background:#FFEBEE;border-left:4px solid var(--danger)}
+.issue.warning{background:#FFF3E0;border-left:4px solid var(--accent)}
+.issue.info{background:#E8F5E9;border-left:4px solid var(--primary-light)}
 
-/* ── Main ── */
-.page-header { margin-bottom: 1.5rem; }
-.page-header h2 { font-size: 22px; font-weight: 600; color: var(--bleu); }
-.page-header p  { font-size: 13px; color: var(--muted); margin-top: 3px; }
+/* Reco */
+.reco{padding:.6rem 1rem;border-radius:0 8px 8px 0;margin:.4rem 0;font-size:.85rem}
+.reco.urgent{background:#FFEBEE;border-left:4px solid var(--danger)}
+.reco.important{background:#FFF3E0;border-left:4px solid var(--accent)}
+.reco.improve{background:#E8F5E9;border-left:4px solid var(--primary-light)}
+.reco strong{display:block;margin-bottom:.2rem}
 
-/* ── Welcome screen ── */
-.welcome {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-height: 60vh;
-  text-align: center;
-  gap: 1.5rem;
-}
-.welcome-icon { font-size: 64px; }
-.welcome h2 { font-size: 24px; font-weight: 600; color: var(--bleu); }
-.welcome p { font-size: 14px; color: var(--muted); max-width: 400px; line-height: 1.7; }
-.dim-pills { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
-.dim-pill {
-  padding: 6px 14px;
-  border-radius: 20px;
-  font-size: 12px;
-  font-weight: 500;
-  border: 1px solid var(--border);
-  background: var(--white);
-  color: var(--muted);
-}
+/* Progress */
+.progress-bar{background:#E0E0E0;border-radius:10px;height:12px;overflow:hidden;margin:.5rem 0}
+.progress-bar .fill{height:100%;border-radius:10px;transition:width .5s ease}
 
-/* ── Metrics row ── */
-.metrics-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 1.5rem; }
-.metric {
-  background: var(--white);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 1rem 1.2rem;
-}
-.metric-lbl { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 4px; }
-.metric-val { font-size: 26px; font-weight: 600; line-height: 1; }
-.metric-sub { font-size: 11px; color: var(--muted); margin-top: 3px; }
+/* Score display */
+.score-display{text-align:center;padding:1.5rem}
+.score-big{font-size:3.5rem;font-weight:800;color:var(--primary)}
+.score-max{font-size:1.2rem;color:#888}
+.score-level{display:inline-block;padding:.3rem 1.2rem;border-radius:20px;font-weight:700;margin-top:.5rem}
 
-/* ── Score section ── */
-.score-grid { display: grid; grid-template-columns: 220px 1fr; gap: 1.2rem; margin-bottom: 1.5rem; }
+/* FAIR letters */
+.fair-row{display:flex;justify-content:center;gap:1rem;margin:1.5rem 0}
+.fair-item{text-align:center}
+.fair-letter{width:60px;height:60px;line-height:60px;border-radius:50%;color:#fff;font-size:1.5rem;font-weight:800;display:inline-block}
+.fair-label{font-size:.7rem;color:#888;margin-top:.3rem;display:block}
 
-.gauge-card {
-  background: var(--white);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  padding: 1.5rem;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: .8rem;
-}
-.gauge-card h3 { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+/* Score bars */
+.score-bar-row{display:flex;align-items:center;gap:.5rem;margin:.4rem 0;font-size:.82rem}
+.score-bar-label{width:170px;font-weight:600;flex-shrink:0}
+.score-bar-track{flex:1;background:#E0E0E0;border-radius:8px;height:16px;overflow:hidden}
+.score-bar-fill{height:100%;border-radius:8px;transition:width .5s}
+.score-bar-val{width:50px;text-align:right;font-weight:700}
 
-.dims-card {
-  background: var(--white);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  padding: 1.5rem;
-}
-.dims-card h3 { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 1rem; }
+/* Tabs */
+.tabs{display:flex;gap:0;margin-bottom:1rem;border-bottom:2px solid #E0E0E0}
+.tab{padding:.5rem 1.2rem;cursor:pointer;font-size:.85rem;font-weight:600;color:#888;border-bottom:3px solid transparent;margin-bottom:-2px;transition:all .2s}
+.tab:hover{color:var(--primary)}
+.tab.active{color:var(--primary);border-bottom-color:var(--primary)}
 
-.dim-row { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
-.dim-row:last-child { margin-bottom: 0; }
-.dim-name { font-size: 13px; font-weight: 500; min-width: 130px; }
-.bar-track { flex: 1; height: 8px; background: #EFF2F7; border-radius: 4px; overflow: hidden; }
-.bar-fill  { height: 8px; border-radius: 4px; transition: width .5s cubic-bezier(.4,0,.2,1); }
-.dim-num   { font-family: var(--mono); font-size: 12px; min-width: 40px; text-align: right; font-weight: 500; }
+/* Upload zone */
+.upload-zone{border:3px dashed #C8E6C9;border-radius:12px;padding:3rem;text-align:center;cursor:pointer;transition:all .3s;background:#f9fff9}
+.upload-zone:hover,.upload-zone.dragover{border-color:var(--primary);background:#E8F5E9}
+.upload-zone .icon{font-size:3rem;margin-bottom:.5rem;display:block}
+.upload-zone input{display:none}
 
-/* ── Charts row ── */
-.charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1.2rem; margin-bottom: 1.5rem; }
-.card {
-  background: var(--white);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  padding: 1.5rem;
+/* Responsive */
+@media(max-width:900px){
+.sidebar{width:200px}
+.main{margin-left:200px}
+.form-row{grid-template-columns:1fr}
 }
-.card h3 { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 1rem; }
-
-.detail-intro {
-  font-size: 12px;
-  color: var(--muted);
-  background: var(--bleu3);
-  border-left: 3px solid var(--bleu2);
-  padding: 8px 12px;
-  border-radius: 0 8px 8px 0;
-  margin-bottom: 1.2rem;
+@media(max-width:600px){
+.sidebar{position:relative;width:100%}
+.main{margin-left:0}
+body{flex-direction:column}
 }
-.detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.2rem; margin-bottom: 1.5rem; }
-.dim-ref { font-size: 10px; color: var(--muted); font-style: italic; margin-bottom: .8rem; margin-top: -6px; }
-
-/* Bloc définition indicateur */
-.dim-def {
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  margin-bottom: 1rem;
-  overflow: hidden;
-}
-.dim-def-header {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 9px 12px;
-  background: linear-gradient(90deg, #EEF2FB 0%, #F8F9FB 100%);
-  cursor: pointer;
-  user-select: none;
-  gap: 8px;
-}
-.dim-def-header:hover { background: #E6EEFB; }
-.dim-def-title {
-  font-size: 12px; font-weight: 600; color: var(--bleu);
-  display: flex; align-items: center; gap: 6px;
-}
-.dim-def-badge {
-  font-size: 10px; background: var(--bleu); color: #fff;
-  padding: 2px 8px; border-radius: 10px; font-weight: 500;
-  flex-shrink: 0;
-}
-.dim-def-toggle {
-  font-size: 10px; color: var(--bleu2); font-weight: 600;
-  white-space: nowrap;
-}
-.dim-def-body {
-  display: none;
-  padding: 12px 14px;
-  border-top: 1px solid var(--border);
-  background: #fff;
-}
-.dim-def.open .dim-def-body { display: block; }
-.dim-def.open .dim-def-toggle { transform: rotate(90deg); display: inline-block; }
-
-.def-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
-.def-block {
-  background: var(--gris);
-  border-radius: 8px;
-  padding: 9px 11px;
-}
-.def-block-title {
-  font-size: 10px; font-weight: 600; text-transform: uppercase;
-  letter-spacing: .05em; color: var(--muted); margin-bottom: 5px;
-}
-.def-block p { font-size: 12px; color: var(--text); line-height: 1.65; }
-.def-scale {
-  background: #F0F4FF; border-radius: 8px; padding: 9px 11px;
-  margin-bottom: 8px;
-}
-.def-scale-title { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing:.05em; color: var(--muted); margin-bottom: 6px; }
-.scale-pills { display: flex; gap: 6px; flex-wrap: wrap; }
-.scale-pill {
-  font-size: 11px; padding: 3px 10px; border-radius: 12px; font-weight: 500;
-}
-.sp-low  { background: #FEE2E2; color: #7F1D1D; }
-.sp-mid  { background: #FEF3C7; color: #78350F; }
-.sp-high { background: #D1FAE5; color: #064E3B; }
-.def-why {
-  font-size: 11px; color: var(--muted); font-style: italic;
-  border-left: 3px solid var(--bleu2); padding-left: 8px;
-  line-height: 1.6; margin-top: 6px;
-}
-
-/* Accordéon */
-.acc-item { border: 1px solid var(--border); border-radius: 10px; margin-bottom: 8px; overflow: hidden; }
-.acc-header {
-  display: flex; align-items: center; gap: 8px;
-  padding: 10px 12px; cursor: pointer;
-  background: var(--gris);
-  transition: background .15s;
-  user-select: none;
-}
-.acc-header:hover { background: #EEF2FB; }
-.acc-score-bar { flex: 1; display: flex; align-items: center; gap: 8px; }
-.acc-lbl { font-size: 12px; font-weight: 500; color: var(--text); min-width: 0; flex: 1; }
-.acc-track { width: 70px; height: 6px; background: #E2E8F0; border-radius: 3px; overflow: hidden; flex-shrink: 0; }
-.acc-fill  { height: 6px; border-radius: 3px; transition: width .5s; }
-.acc-num   { font-family: var(--mono); font-size: 12px; font-weight: 600; min-width: 36px; text-align: right; flex-shrink: 0; }
-.acc-toggle {
-  font-size: 10px; color: var(--bleu2); font-weight: 600;
-  padding: 3px 8px; border-radius: 6px;
-  background: var(--bleu3); border: 1px solid #C3D5F8;
-  white-space: nowrap; flex-shrink: 0;
-  transition: all .15s;
-}
-.acc-item.open .acc-toggle { background: var(--bleu2); color: #fff; border-color: var(--bleu2); }
-
-.acc-body {
-  display: none;
-  padding: 12px 14px;
-  border-top: 1px solid var(--border);
-  background: #fff;
-  font-size: 12px;
-  line-height: 1.7;
-}
-.acc-item.open .acc-body { display: block; }
-
-.acc-section { margin-bottom: 10px; }
-.acc-section:last-child { margin-bottom: 0; }
-.acc-section-title {
-  font-size: 10px; font-weight: 600; text-transform: uppercase;
-  letter-spacing: .06em; color: var(--muted);
-  margin-bottom: 4px; display: flex; align-items: center; gap: 5px;
-}
-.acc-section-title::before {
-  content: ''; display: inline-block;
-  width: 3px; height: 12px; border-radius: 2px;
-  background: currentColor;
-}
-.acc-rule { background: #F8F9FB; border-radius: 6px; padding: 7px 10px; color: var(--text); }
-.acc-found { background: #FFFBEB; border-radius: 6px; padding: 7px 10px; }
-.acc-found.ok  { background: #F0FDF4; }
-.acc-found.bad { background: #FFF7ED; }
-.acc-found.crit { background: #FEF2F2; }
-.acc-calcul {
-  background: #EEF2FB; border-radius: 6px; padding: 7px 10px;
-  font-family: var(--mono); font-size: 11px; color: var(--bleu);
-  border-left: 3px solid var(--bleu2);
-}
-.acc-ref { font-size: 10px; color: var(--muted); font-style: italic; margin-top: 2px; }
-.found-tag {
-  display: inline-block; font-family: var(--mono); font-size: 10px;
-  background: #FEF3C7; color: #92400E; padding: 1px 6px;
-  border-radius: 4px; margin: 1px 2px;
-}
-.found-tag.ok { background: #D1FAE5; color: #065F46; }
-.found-tag.bad { background: #FEE2E2; color: #7F1D1D; }
-
-/* ── Recommandations ── */
-.recos-card {
-  background: var(--white);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  padding: 1.5rem;
-  margin-bottom: 1.5rem;
-}
-.recos-card h3 { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 1rem; }
-
-.reco {
-  display: flex;
-  gap: 12px;
-  padding: 10px 12px;
-  border-radius: 8px;
-  margin-bottom: 8px;
-  font-size: 12px;
-  line-height: 1.6;
-  align-items: flex-start;
-}
-.reco-u { background: var(--rouge2); border-left: 3px solid #DC2626; }
-.reco-i { background: var(--orange2); border-left: 3px solid #D97706; }
-.reco-a { background: var(--vert2);   border-left: 3px solid #059669; }
-
-.tag {
-  font-size: 10px;
-  font-weight: 600;
-  padding: 2px 8px;
-  border-radius: 10px;
-  white-space: nowrap;
-  flex-shrink: 0;
-  margin-top: 2px;
-  font-family: var(--mono);
-}
-.tag-u { background: #FCA5A5; color: var(--rouge); }
-.tag-i { background: #FDE68A; color: var(--orange); }
-.tag-a { background: #6EE7B7; color: var(--vert); }
-
-/* ── Badge niveau ── */
-.niveau-badge {
-  padding: 5px 16px;
-  border-radius: 20px;
-  font-size: 13px;
-  font-weight: 600;
-}
-.n-low  { background: var(--rouge2); color: var(--rouge); }
-.n-mid  { background: var(--orange2); color: var(--orange); }
-.n-high { background: var(--vert2); color: var(--vert); }
-
-/* ── Export ── */
-.export-bar {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 1.5rem;
-}
-.btn {
-  padding: 9px 20px;
-  border-radius: 8px;
-  font-size: 13px;
-  font-weight: 500;
-  font-family: var(--sans);
-  cursor: pointer;
-  border: 1px solid var(--border);
-  background: var(--white);
-  color: var(--text);
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  transition: all .15s;
-}
-.btn:hover { background: var(--gris); }
-.btn-primary { background: var(--bleu); color: #fff; border-color: var(--bleu); }
-.btn-primary:hover { background: #152548; }
-
-/* ── Data preview ── */
-.preview-wrap { overflow-x: auto; border-radius: 10px; border: 1px solid var(--border); }
-.preview-table { width: 100%; border-collapse: collapse; font-size: 12px; }
-.preview-table th { background: var(--gris); padding: 8px 12px; text-align: left; font-size: 11px; font-weight: 500; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; white-space: nowrap; border-bottom: 1px solid var(--border); }
-.preview-table td { padding: 7px 12px; border-bottom: 1px solid #F1F5FB; font-family: var(--mono); font-size: 11px; white-space: nowrap; max-width: 160px; overflow: hidden; text-overflow: ellipsis; }
-.preview-table tr:hover td { background: #F8FAFF; }
-.null-cell { color: #CBD5E1; font-style: italic; }
-
-/* ── Spinner ── */
-.spinner { display: none; text-align: center; padding: 3rem; }
-.spinner.show { display: block; }
-.spin { width: 40px; height: 40px; border: 3px solid var(--border); border-top-color: var(--bleu2); border-radius: 50%; animation: spin .8s linear infinite; margin: 0 auto 1rem; }
-@keyframes spin { to { transform: rotate(360deg); } }
-
-/* ── Tabs ── */
-.tabs { display: flex; gap: 4px; margin-bottom: 1.5rem; background: var(--gris); padding: 4px; border-radius: 10px; width: fit-content; }
-.tab-btn { padding: 6px 16px; border-radius: 7px; font-size: 13px; font-weight: 500; font-family: var(--sans); cursor: pointer; border: none; background: transparent; color: var(--muted); transition: all .15s; }
-.tab-btn.active { background: var(--white); color: var(--bleu); box-shadow: 0 1px 4px rgba(0,0,0,.08); }
-.tab-panel { display: none; }
-.tab-panel.active { display: block; }
-
-/* ── Missing cells highlight ── */
-.miss-hi { background: #FEF9C3; }
 </style>
 </head>
 <body>
-<div class="shell">
 
-  <!-- ── SIDEBAR ── -->
-  <aside class="sidebar">
-    <div class="logo">
-      <div class="logo-icon">🌱</div>
-      <div>
-        <h1>AgriAI-Readiness</h1>
-        <p>UCAD/EBAD · 2026</p>
-      </div>
+<nav class="sidebar">
+    <h1>🌾 AgriData Ready</h1>
+    <p class="slogan">From Raw Data to FAIR & AI-Ready Data</p>
+    <div id="nav-items"></div>
+    <div class="file-info" id="file-info" style="display:none">
+        <p><strong>Fichier :</strong> <span id="info-filename"></span></p>
+        <p><strong>Lignes :</strong> <span id="info-rows"></span></p>
+        <p><strong>Colonnes :</strong> <span id="info-cols"></span></p>
+        <p><strong>Modifications :</strong> <span id="info-edits">0</span></p>
     </div>
+</nav>
 
-    <div class="upload-zone" onclick="document.getElementById('fileInput').click()">
-      <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" onchange="handleFile(event)">
-      <div class="up-icon">📂</div>
-      <p><strong>Cliquer pour charger</strong><br>Excel (.xlsx, .xls) ou CSV</p>
-    </div>
-
-    <div class="sheet-select" id="sheetSelect">
-      <label>Feuille active</label>
-      <select id="sheetPicker" onchange="analyzeSheet()"></select>
-    </div>
-
-    <div class="sidebar-refs">
-      <strong>Références scientifiques</strong>
-      Wilkinson et al. (2016) — FAIR<br>
-      Wang & Strong (1996) — Complétude<br>
-      Sambasivan et al. (2021) — Cohérence<br>
-      Andrew Ng — Data-Centric AI<br>
-      Lawrence (2017) — Interopérabilité
-    </div>
-  </aside>
-
-  <!-- ── MAIN ── -->
-  <main class="main" id="mainContent">
-
-    <!-- Welcome -->
-    <div class="welcome" id="welcomeScreen">
-      <div class="welcome-icon">🌾</div>
-      <h2>Évaluez la maturité IA de vos données agricoles</h2>
-      <p>Chargez un fichier Excel ou CSV pour obtenir un score AI-Readiness automatique sur 100 points, basé sur 4 dimensions scientifiques.</p>
-      <div class="dim-pills">
-        <div class="dim-pill">📊 Complétude /25</div>
-        <div class="dim-pill">🔁 Cohérence /25</div>
-        <div class="dim-pill">📄 Documentation /25</div>
-        <div class="dim-pill">🔗 Interopérabilité /25</div>
-      </div>
-    </div>
-
-    <!-- Spinner -->
-    <div class="spinner" id="spinner">
-      <div class="spin"></div>
-      <p style="color:var(--muted);font-size:13px">Analyse en cours…</p>
-    </div>
-
-    <!-- Results -->
-    <div id="results" style="display:none">
-
-      <div class="page-header">
-        <h2 id="resultsTitle">Rapport AI-Readiness</h2>
-        <p id="resultsSubtitle"></p>
-      </div>
-
-      <div class="export-bar">
-        <button class="btn btn-primary" onclick="exportCSV()">⬇ Exporter rapport CSV</button>
-        <button class="btn" onclick="exportJSON()">⬇ Exporter metadata.json</button>
-        <button class="btn" onclick="window.print()">🖨 Imprimer</button>
-      </div>
-
-      <div class="tabs">
-        <button class="tab-btn active" onclick="showTab('overview')">Vue d'ensemble</button>
-        <button class="tab-btn" onclick="showTab('detail')">Diagnostic détaillé</button>
-        <button class="tab-btn" onclick="showTab('recos')">Recommandations</button>
-        <button class="tab-btn" onclick="showTab('preview')">Aperçu données</button>
-      </div>
-
-      <!-- TAB: Overview -->
-      <div class="tab-panel active" id="panel-overview">
-        <div class="metrics-grid" id="metricsGrid"></div>
-        <div class="score-grid">
-          <div class="gauge-card">
-            <h3>Score global</h3>
-            <canvas id="gaugeCanvas" width="160" height="100"></canvas>
-            <div id="niveauBadge" class="niveau-badge n-mid">–</div>
-          </div>
-          <div class="dims-card">
-            <h3>Scores par dimension (/25)</h3>
-            <div id="dimBars"></div>
-          </div>
-        </div>
-      </div>
-
-      <!-- TAB: Detail -->
-      <div class="tab-panel" id="panel-detail">
-        <div class="detail-intro">
-          Cliquez sur <strong>▶ Voir le détail</strong> pour afficher la règle de calcul, les constats relevés dans vos données et le calcul exact du score.
-        </div>
-        <div class="detail-grid">
-          <div class="card">
-            <h3>📊 Complétude — /25</h3>
-            <p class="dim-ref">Wang &amp; Strong (1996) · Batini &amp; Scannapieco (2016)</p>
-            <div class="dim-def" id="def-comp">
-              <div class="dim-def-header" onclick="toggleDef('def-comp')">
-                <div class="dim-def-title">📖 Définition &amp; interprétation</div>
-                <span class="dim-def-badge">/25 pts</span>
-                <span class="dim-def-toggle">▶</span>
-              </div>
-              <div class="dim-def-body">
-                <div class="def-grid">
-                  <div class="def-block">
-                    <div class="def-block-title">Qu'est-ce que c'est ?</div>
-                    <p>La <strong>complétude</strong> mesure dans quelle mesure toutes les valeurs attendues sont effectivement renseignées dans le dataset. Une donnée incomplète est une donnée absente, vide ou non renseignée (valeur nulle).</p>
-                  </div>
-                  <div class="def-block">
-                    <div class="def-block-title">Pourquoi c'est important pour l'IA ?</div>
-                    <p>Les algorithmes de machine learning ne peuvent pas traiter les valeurs manquantes. Un taux élevé sur une variable cible (ex : rendement) empêche l'entraînement du modèle et biaise les prédictions.</p>
-                  </div>
-                </div>
-                <div class="def-scale">
-                  <div class="def-scale-title">Interprétation du score</div>
-                  <div class="scale-pills">
-                    <span class="scale-pill sp-low">0–9 pts : Faible — prétraitement lourd requis</span>
-                    <span class="scale-pill sp-mid">10–17 pts : Moyen — imputation ciblée recommandée</span>
-                    <span class="scale-pill sp-high">18–25 pts : Élevé — données suffisamment complètes</span>
-                  </div>
-                </div>
-                <div class="def-why">« Data quality is fitness for use — completeness is the most basic prerequisite. » — Wang &amp; Strong (1996), Journal of Management Information Systems</div>
-              </div>
-            </div>
-            <div id="subComp"></div>
-          </div>
-          <div class="card">
-            <h3>🔁 Cohérence — /25</h3>
-            <p class="dim-ref">Andrew Ng (Data-Centric AI) · Sambasivan et al. (2021)</p>
-            <div class="dim-def" id="def-cohe">
-              <div class="dim-def-header" onclick="toggleDef('def-cohe')">
-                <div class="dim-def-title">📖 Définition &amp; interprétation</div>
-                <span class="dim-def-badge">/25 pts</span>
-                <span class="dim-def-toggle">▶</span>
-              </div>
-              <div class="dim-def-body">
-                <div class="def-grid">
-                  <div class="def-block">
-                    <div class="def-block-title">Qu'est-ce que c'est ?</div>
-                    <p>La <strong>cohérence</strong> mesure l'uniformité des formats, des codes et des unités dans le dataset. Des données cohérentes utilisent les mêmes conventions de bout en bout : une valeur "oui" est toujours représentée de la même façon.</p>
-                  </div>
-                  <div class="def-block">
-                    <div class="def-block-title">Pourquoi c'est important pour l'IA ?</div>
-                    <p>Un modèle entraîné sur "Oui/oui/1" apprend trois représentations d'un seul concept. Cela introduit du bruit dans les features, dégrade la précision et allonge le prétraitement. Andrew Ng identifie l'incohérence comme la première cause d'échec des projets ML.</p>
-                  </div>
-                </div>
-                <div class="def-scale">
-                  <div class="def-scale-title">Interprétation du score</div>
-                  <div class="scale-pills">
-                    <span class="scale-pill sp-low">0–9 pts : Faible — nettoyage extensif obligatoire</span>
-                    <span class="scale-pill sp-mid">10–17 pts : Moyen — corrections ciblées nécessaires</span>
-                    <span class="scale-pill sp-high">18–25 pts : Élevé — formats homogènes et standardisés</span>
-                  </div>
-                </div>
-                <div class="def-why">« In our study of 53 AI projects, data quality issues — especially inconsistency — were the #1 reason for project failure. » — Sambasivan et al. (2021), CHI Conference</div>
-              </div>
-            </div>
-            <div id="subCohe"></div>
-          </div>
-          <div class="card">
-            <h3>📄 Documentation — /25</h3>
-            <p class="dim-ref">Wilkinson et al. (2016) — FAIR Principles</p>
-            <div class="dim-def" id="def-docu">
-              <div class="dim-def-header" onclick="toggleDef('def-docu')">
-                <div class="dim-def-title">📖 Définition &amp; interprétation</div>
-                <span class="dim-def-badge">/25 pts</span>
-                <span class="dim-def-toggle">▶</span>
-              </div>
-              <div class="dim-def-body">
-                <div class="def-grid">
-                  <div class="def-block">
-                    <div class="def-block-title">Qu'est-ce que c'est ?</div>
-                    <p>La <strong>documentation</strong> évalue la présence d'informations contextuelles permettant de comprendre, interpréter et réutiliser les données sans avoir à interroger les collecteurs. Elle couvre : noms de colonnes, dictionnaire de variables, README et unités de mesure.</p>
-                  </div>
-                  <div class="def-block">
-                    <div class="def-block-title">Pourquoi c'est important pour l'IA ?</div>
-                    <p>Sans documentation, un ingénieur data ne peut pas interpréter les codes (que signifie "1" dans adopt_engrais ?), ne peut pas vérifier les unités (kg ou tonnes ?) et ne peut pas reproduire les analyses. La documentation est le pilier FAIR "Reusable".</p>
-                  </div>
-                </div>
-                <div class="def-scale">
-                  <div class="def-scale-title">Interprétation du score</div>
-                  <div class="scale-pills">
-                    <span class="scale-pill sp-low">0–9 pts : Critique — données inexplicables sans les collecteurs</span>
-                    <span class="scale-pill sp-mid">10–17 pts : Partielle — documentation à compléter</span>
-                    <span class="scale-pill sp-high">18–25 pts : Bonne — données auto-descriptives</span>
-                  </div>
-                </div>
-                <div class="def-why">« To be Reusable, data must be richly described with a plurality of accurate and relevant attributes. » — Wilkinson et al. (2016), Scientific Data, principe R1</div>
-              </div>
-            </div>
-            <div id="subDocu"></div>
-          </div>
-          <div class="card">
-            <h3>🔗 Interopérabilité — /25</h3>
-            <p class="dim-ref">Wilkinson et al. (2016) · Lawrence (2017)</p>
-            <div class="dim-def" id="def-inte">
-              <div class="dim-def-header" onclick="toggleDef('def-inte')">
-                <div class="dim-def-title">📖 Définition &amp; interprétation</div>
-                <span class="dim-def-badge">/25 pts</span>
-                <span class="dim-def-toggle">▶</span>
-              </div>
-              <div class="dim-def-body">
-                <div class="def-grid">
-                  <div class="def-block">
-                    <div class="def-block-title">Qu'est-ce que c'est ?</div>
-                    <p>L'<strong>interopérabilité analytique</strong> mesure la capacité des données à être ingérées directement dans un pipeline de traitement (Python, R, Power BI, scikit-learn) sans transformation manuelle préalable. Elle évalue la structure, les types et la compatibilité ML.</p>
-                  </div>
-                  <div class="def-block">
-                    <div class="def-block-title">Pourquoi c'est important pour l'IA ?</div>
-                    <p>Des données non interopérables imposent un prétraitement lourd avant chaque analyse. Des identifiants incohérents entre tables rendent la jointure automatique impossible. Un faible ratio de features numériques nécessite des étapes d'encodage supplémentaires.</p>
-                  </div>
-                </div>
-                <div class="def-scale">
-                  <div class="def-scale-title">Interprétation du score</div>
-                  <div class="scale-pills">
-                    <span class="scale-pill sp-low">0–9 pts : Faible — pipeline ML impossible en l'état</span>
-                    <span class="scale-pill sp-mid">10–17 pts : Moyen — ingestion possible après corrections</span>
-                    <span class="scale-pill sp-high">18–25 pts : Élevé — prêt pour l'ingestion directe</span>
-                  </div>
-                </div>
-                <div class="def-why">« Interoperability means using formal, shared languages and protocols that allow data to be integrated with other datasets and tools without manual intervention. » — Wilkinson et al. (2016), principe I1</div>
-              </div>
-            </div>
-            <div id="subInte"></div>
-          </div>
-        </div>
-      </div>
-
-      <!-- TAB: Recos -->
-      <div class="tab-panel" id="panel-recos">
-        <div class="recos-card">
-          <h3>Recommandations prioritaires</h3>
-          <div id="recosList"></div>
-        </div>
-      </div>
-
-      <!-- TAB: Preview -->
-      <div class="tab-panel" id="panel-preview">
-        <div class="card" style="margin-bottom:1rem">
-          <h3>Aperçu des données (10 premières lignes)</h3>
-          <p style="font-size:12px;color:var(--muted);margin-bottom:.8rem">Les cellules en jaune contiennent des valeurs manquantes.</p>
-          <div class="preview-wrap" id="previewTable"></div>
-        </div>
-      </div>
-
-    </div>
-  </main>
-</div>
+<div class="main" id="main-content"></div>
 
 <script>
-// ── État global ──────────────────────────────────────────────
-let G = { wb: null, sheets: {}, curSheet: null, result: null, filename: '' };
+// ═══════════════════════════════════════════════════════════════
+// APPLICATION STATE
+// ═══════════════════════════════════════════════════════════════
+const APP = {
+    step: 1,
+    data: null,
+    originalData: null,
+    columns: [],
+    fileName: '',
+    qualityReport: null,
+    variableDocs: {},
+    metadata: {},
+    fairScore: null,
+    aiScore: null,
+    recommendations: [],
+    editHistory: [],
+    editCount: 0
+};
 
-// ── Chargement fichier ───────────────────────────────────────
-function handleFile(e) {
-  const file = e.target.files[0];
-  if (!file) return;
-  G.filename = file.name;
-  const reader = new FileReader();
-  reader.onload = ev => {
-    const data = new Uint8Array(ev.target.result);
-    if (file.name.toLowerCase().endsWith('.csv')) {
-      const text = new TextDecoder('utf-8').decode(data);
-      const ws = XLSX.read(text, { type: 'string' }).Sheets;
-      G.sheets = {};
-      const rows = XLSX.utils.sheet_to_json(Object.values(ws)[0], { defval: null });
-      G.sheets['Données'] = rows;
-      populateSheets(['Données']);
+const STEPS = [
+    'Importer les données',
+    'Qualité des données',
+    'Modifier les données',
+    'Documenter les variables',
+    'Métadonnées',
+    'Score FAIR',
+    'Score AI Readiness',
+    'Recommandations',
+    'Exporter'
+];
+
+// ═══════════════════════════════════════════════════════════════
+// NAVIGATION
+// ═══════════════════════════════════════════════════════════════
+function renderNav() {
+    const c = document.getElementById('nav-items');
+    c.innerHTML = STEPS.map((name, i) => {
+        const n = i + 1;
+        let cls = 'nav-item';
+        if (n === APP.step) cls += ' active';
+        else if (APP.data && n < APP.step) cls += ' done';
+        const disabled = !APP.data && n > 1;
+        return `<div class="${cls}" onclick="${disabled ? '' : `goStep(${n})`}" style="${disabled ? 'opacity:.4;cursor:default' : ''}">
+            <span class="num">${n === APP.step ? '▶' : (APP.data && n < APP.step ? '✓' : n)}</span>
+            <span>${name}</span>
+        </div>`;
+    }).join('');
+}
+
+function goStep(n) {
+    APP.step = n;
+    renderNav();
+    renderStep();
+}
+
+function updateFileInfo() {
+    const el = document.getElementById('file-info');
+    if (!APP.data) { el.style.display = 'none'; return; }
+    el.style.display = 'block';
+    document.getElementById('info-filename').textContent = APP.fileName;
+    document.getElementById('info-rows').textContent = APP.data.length;
+    document.getElementById('info-cols').textContent = APP.columns.length;
+    document.getElementById('info-edits').textContent = APP.editCount;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// FILE LOADING
+// ═══════════════════════════════════════════════════════════════
+function handleFile(file) {
+    APP.fileName = file.name;
+    const ext = file.name.toLowerCase().split('.').pop();
+    const reader = new FileReader();
+
+    if (ext === 'csv') {
+        reader.onload = e => {
+            const result = Papa.parse(e.target.result, { header: true, skipEmptyLines: true, dynamicTyping: true });
+            APP.columns = result.meta.fields || [];
+            APP.data = result.data;
+            APP.originalData = JSON.parse(JSON.stringify(result.data));
+            onDataLoaded();
+        };
+        reader.readAsText(file);
+    } else if (ext === 'xlsx' || ext === 'xls') {
+        reader.onload = e => {
+            const wb = XLSX.read(e.target.result, { type: 'array' });
+            const ws = wb.Sheets[wb.SheetNames[0]];
+            const json = XLSX.utils.sheet_to_json(ws, { defval: null });
+            if (json.length > 0) {
+                APP.columns = Object.keys(json[0]);
+                APP.data = json;
+                APP.originalData = JSON.parse(JSON.stringify(json));
+            }
+            onDataLoaded();
+        };
+        reader.readAsArrayBuffer(file);
+    } else if (ext === 'json') {
+        reader.onload = e => {
+            try {
+                const json = JSON.parse(e.target.result);
+                const arr = Array.isArray(json) ? json : [json];
+                APP.columns = Object.keys(arr[0] || {});
+                APP.data = arr;
+                APP.originalData = JSON.parse(JSON.stringify(arr));
+                onDataLoaded();
+            } catch (err) { alert('Erreur JSON : ' + err.message); }
+        };
+        reader.readAsText(file);
     } else {
-      G.wb = XLSX.read(data, { type: 'array', cellDates: true });
-      G.sheets = {};
-      G.wb.SheetNames.forEach(n => {
-        G.sheets[n] = XLSX.utils.sheet_to_json(G.wb.Sheets[n], { defval: null });
-      });
-      populateSheets(G.wb.SheetNames);
+        alert('Format non supporté. Utilisez CSV, Excel ou JSON.');
     }
-  };
-  reader.readAsArrayBuffer(file);
 }
 
-function populateSheets(names) {
-  const sel = document.getElementById('sheetPicker');
-  sel.innerHTML = names.map(n => `<option value="${n}">${n}</option>`).join('');
-  document.getElementById('sheetSelect').style.display = 'block';
-  G.curSheet = names[0];
-  analyzeSheet();
+function onDataLoaded() {
+    APP.variableDocs = {};
+    APP.metadata = {};
+    APP.editHistory = [];
+    APP.editCount = 0;
+    APP.qualityReport = null;
+    APP.fairScore = null;
+    APP.aiScore = null;
+    updateFileInfo();
+    renderNav();
+    renderStep();
 }
 
-function analyzeSheet() {
-  G.curSheet = document.getElementById('sheetPicker').value;
-  const rows = G.sheets[G.curSheet] || [];
-  if (!rows.length) return;
-  document.getElementById('welcomeScreen').style.display = 'none';
-  document.getElementById('spinner').classList.add('show');
-  document.getElementById('results').style.display = 'none';
-  setTimeout(() => {
-    G.result = runAnalysis(rows, G.sheets, G.curSheet);
-    renderResults(G.result, rows);
-    document.getElementById('spinner').classList.remove('show');
-    document.getElementById('results').style.display = 'block';
-  }, 300);
+// ═══════════════════════════════════════════════════════════════
+// UTILITY FUNCTIONS
+// ═══════════════════════════════════════════════════════════════
+function getVal(row, col) { return row[col]; }
+function isNull(v) { return v === null || v === undefined || v === '' || (typeof v === 'number' && isNaN(v)); }
+function countMissing(col) { return APP.data.filter(r => isNull(r[col])).length; }
+function countDuplicates() {
+    const seen = new Set();
+    let dup = 0;
+    for (const row of APP.data) {
+        const key = APP.columns.map(c => String(row[c] ?? '')).join('|');
+        if (seen.has(key)) dup++;
+        else seen.add(key);
+    }
+    return dup;
+}
+function isNumericCol(col) {
+    let numCount = 0, total = 0;
+    for (const row of APP.data) {
+        const v = row[col];
+        if (isNull(v)) continue;
+        total++;
+        if (typeof v === 'number' || (typeof v === 'string' && !isNaN(parseFloat(v)) && isFinite(v))) numCount++;
+    }
+    return total > 0 && numCount / total > 0.7;
+}
+function numericValues(col) {
+    return APP.data.map(r => r[col]).filter(v => !isNull(v) && !isNaN(parseFloat(v))).map(v => parseFloat(v));
+}
+function addHistory(action, detail) {
+    APP.editHistory.push({ time: new Date().toLocaleTimeString(), action, detail });
+    APP.editCount++;
+    updateFileInfo();
+}
+function pct(a, b) { return b > 0 ? Math.round(a / b * 1000) / 10 : 0; }
+function scoreColor(ratio) { return ratio < 0.4 ? 'var(--danger)' : ratio < 0.7 ? 'var(--accent)' : 'var(--primary)'; }
+function navButtons(prev, next, nextLabel = 'Suivant →') {
+    return `<div class="nav-buttons">
+        <div>${prev ? `<button class="btn btn-secondary" onclick="goStep(${prev})">← Retour</button>` : ''}</div>
+        <div>${next ? `<button class="btn btn-primary" onclick="goStep(${next})">${nextLabel}</button>` : ''}</div>
+    </div>`;
 }
 
-// ── MOTEUR D'ANALYSE ─────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════
+// STEP 1: IMPORT
+// ═══════════════════════════════════════════════════════════════
+function renderStep1() {
+    let html = `<div class="page-header"><h2>Étape 1 : Importer les données</h2><p>Déposez votre fichier de données brut pour commencer</p></div>`;
 
-function runAnalysis(rows, allSheets, sheetName) {
-  if (!rows.length) return null;
-  const cols = Object.keys(rows[0]);
-  const n = rows.length;
-  const nc = cols.length;
+    html += `<div class="upload-zone" id="upload-zone" onclick="document.getElementById('file-input').click()">
+        <span class="icon">📂</span>
+        <h3>Glissez-déposez un fichier ici</h3>
+        <p style="color:#888;margin-top:.3rem">ou cliquez pour sélectionner — CSV, Excel (.xlsx), JSON</p>
+        <input type="file" id="file-input" accept=".csv,.xlsx,.xls,.json" onchange="if(this.files[0])handleFile(this.files[0])">
+    </div>`;
 
-  // ── Helpers ──
-  function colValues(col) { return rows.map(r => r[col]); }
-  function countNull(vals) { return vals.filter(v => v === null || v === undefined || v === '' || (typeof v === 'number' && isNaN(v))).length; }
-  function isNull(v) { return v === null || v === undefined || v === '' || (typeof v === 'number' && isNaN(v)); }
+    if (APP.data) {
+        const totalCells = APP.data.length * APP.columns.length;
+        let totalMissing = 0;
+        for (const col of APP.columns) totalMissing += countMissing(col);
+        const nDup = countDuplicates();
 
-  // ═══ COMPLÉTUDE (/25) ═══
-  // C1 — Taux global manquants /10
-  let totalNull = 0;
-  cols.forEach(c => totalNull += countNull(colValues(c)));
-  const missRate = totalNull / (n * nc);
-  const c1 = missRate === 0 ? 10 : missRate <= .02 ? 9 : missRate <= .05 ? 8 : missRate <= .10 ? 6 : missRate <= .20 ? 4 : missRate <= .35 ? 2 : 0;
+        html += `<div style="margin-top:1rem;padding:.6rem 1rem;background:#E8F5E9;border-radius:8px;color:var(--primary);font-weight:600">
+            ✅ Fichier chargé : ${APP.fileName}</div>`;
 
-  // C2 — Colonnes > 5% manquants /8
-  let colsMiss = cols.filter(c => countNull(colValues(c)) / n > .05);
-  const ratioIncomplete = colsMiss.length / nc;
-  const c2 = ratioIncomplete === 0 ? 8 : ratioIncomplete <= .1 ? 7 : ratioIncomplete <= .25 ? 5 : ratioIncomplete <= .5 ? 3 : 0;
+        html += `<div class="metrics">
+            <div class="metric"><div class="val">${APP.data.length}</div><div class="label">Lignes</div></div>
+            <div class="metric"><div class="val">${APP.columns.length}</div><div class="label">Colonnes</div></div>
+            <div class="metric"><div class="val">${totalMissing}</div><div class="label">Valeurs manquantes</div></div>
+            <div class="metric"><div class="val">${nDup}</div><div class="label">Doublons</div></div>
+        </div>`;
 
-  // C3 — Colonnes entièrement vides /7
-  let emptyColsArr = cols.filter(c => countNull(colValues(c)) === n);
-  const c3 = emptyColsArr.length === 0 ? 7 : 0;
+        html += `<div class="card"><h3>Aperçu des données</h3><div class="table-wrap"><table><tr>${APP.columns.map(c => `<th>${c}</th>`).join('')}</tr>`;
+        for (let i = 0; i < Math.min(10, APP.data.length); i++) {
+            html += '<tr>' + APP.columns.map(c => `<td>${APP.data[i][c] ?? '<em style="color:#ccc">vide</em>'}</td>`).join('') + '</tr>';
+        }
+        html += '</table></div></div>';
 
-  const scoreComp = c1 + c2 + c3;
-  const compDetails = {
-    score: scoreComp, missRate: +(missRate * 100).toFixed(1), totalNull,
-    colsMiss, emptyCols: emptyColsArr,
-    topMiss: cols.map(c => ({ c, r: +(countNull(colValues(c)) / n * 100).toFixed(1) }))
-             .sort((a,b) => b.r - a.r).filter(x => x.r > 0).slice(0, 6),
-    subs: [
-      { l: 'C1 — Taux global', v: c1, m: 10 },
-      { l: 'C2 — Cols incomplètes', v: c2, m: 8 },
-      { l: 'C3 — Cols vides', v: c3, m: 7 },
-    ]
-  };
+        html += `<div class="card"><h3>Types des colonnes</h3><div class="table-wrap"><table>
+            <tr><th>Colonne</th><th>Type détecté</th><th>Non-null</th><th>Manquants (%)</th></tr>`;
+        for (const col of APP.columns) {
+            const miss = countMissing(col);
+            const missPct = pct(miss, APP.data.length);
+            const type = isNumericCol(col) ? 'Numérique' : 'Texte';
+            html += `<tr><td><strong>${col}</strong></td><td>${type}</td><td>${APP.data.length - miss}</td>
+                <td style="color:${missPct > 20 ? 'var(--danger)' : missPct > 5 ? 'var(--accent)' : 'var(--primary)'}">${missPct}%</td></tr>`;
+        }
+        html += '</table></div></div>';
+        html += navButtons(null, 2, 'Analyser la qualité →');
+    }
+    return html;
+}
 
-  // ═══ COHÉRENCE (/25) ═══
-  const CODES_OUI = new Set(['oui','yes','1','true','o','vrai']);
-  const CODES_NON = new Set(['non','no','0','false','n','faux']);
-  const DATE_PATTERNS = [
-    /\d{2}\/\d{2}\/\d{4}/,
-    /\d{4}-\d{2}-\d{2}/,
-    /\d{2}-\d{2}-\d{4}/,
-    /(jan|fév|mar|avr|mai|juin|juil|aoû|sep|oct|nov|déc|feb|apr|aug|oct|nov|dec)[a-z\.]*\s+\d{4}/i,
-    /^\d{4}$/,
-  ];
+// ═══════════════════════════════════════════════════════════════
+// STEP 2: QUALITY
+// ═══════════════════════════════════════════════════════════════
+function analyzeQuality() {
+    const issues = [];
+    const n = APP.data.length, nc = APP.columns.length, totalCells = n * nc;
+    let totalMissing = 0;
+    const missingPerCol = {};
+    for (const col of APP.columns) {
+        const m = countMissing(col);
+        missingPerCol[col] = m;
+        totalMissing += m;
+    }
+    const missingPct = pct(totalMissing, totalCells);
 
-  let binaryIncoh = [], dateMixed = [], textInNum = [], suspectTypes = 0;
+    if (totalMissing > 0)
+        issues.push({ type: 'missing', severity: missingPct > 20 ? 'critical' : 'warning',
+            message: `${totalMissing} valeurs manquantes (${missingPct}%)`, detail: missingPerCol });
 
-  cols.forEach(col => {
-    const vals = colValues(col).filter(v => !isNull(v)).map(v => String(v).trim());
-    if (!vals.length) return;
-    const uniq = new Set(vals.map(v => v.toLowerCase()));
+    const nDup = countDuplicates();
+    if (nDup > 0)
+        issues.push({ type: 'duplicates', severity: 'warning', message: `${nDup} ligne(s) en doublon` });
 
-    // Binaire incohérent
-    if (uniq.size >= 2 && uniq.size <= 8) {
-      const hasOui = [...uniq].filter(v => CODES_OUI.has(v));
-      const hasNon = [...uniq].filter(v => CODES_NON.has(v));
-      if (hasOui.length > 1 || hasNon.length > 1) binaryIncoh.push(col);
+    const emptyCols = APP.columns.filter(c => missingPerCol[c] === n);
+    if (emptyCols.length > 0)
+        issues.push({ type: 'empty_cols', severity: 'critical', message: `${emptyCols.length} colonne(s) entièrement vide(s) : ${emptyCols.join(', ')}` });
+
+    const badNames = APP.columns.filter(c => c.length <= 2 || c.startsWith('Unnamed') || /^col\d+$/i.test(c));
+    if (badNames.length > 0)
+        issues.push({ type: 'bad_names', severity: 'warning', message: `${badNames.length} nom(s) de colonne(s) peu explicite(s) : ${badNames.join(', ')}` });
+
+    for (const col of APP.columns) {
+        const vals = APP.data.map(r => r[col]).filter(v => !isNull(v)).map(v => String(v).trim().toLowerCase());
+        const unique = [...new Set(vals)];
+        const binVals = new Set(['oui','non','yes','no','0','1','true','false','vrai','faux','o','n']);
+        if (unique.length <= 6 && unique.length >= 2) {
+            const inter = unique.filter(v => binVals.has(v));
+            if (inter.length >= 2) {
+                const ouiForms = inter.filter(v => ['oui','yes','1','true','o','vrai'].includes(v));
+                const nonForms = inter.filter(v => ['non','no','0','false','n','faux'].includes(v));
+                if (ouiForms.length > 1 || nonForms.length > 1)
+                    issues.push({ type: 'inconsistent', severity: 'warning', message: `Colonne '${col}' : codage binaire incohérent (${unique.join(', ')})` });
+            }
+        }
     }
 
-    // Date mixte
-    const colL = col.toLowerCase();
-    if (['date','annee','année','mois','year'].some(k => colL.includes(k))) {
-      const fmts = new Set();
-      vals.slice(0, 40).forEach(v => DATE_PATTERNS.forEach((p, i) => { if (p.test(v)) fmts.add(i); }));
-      if (fmts.size > 1) dateMixed.push(col);
+    for (const col of APP.columns) {
+        if (/date|annee|année|mois|year|period/i.test(col)) {
+            const vals = APP.data.map(r => r[col]).filter(v => !isNull(v)).map(v => String(v));
+            const patterns = new Set();
+            for (const v of vals.slice(0, 50)) {
+                if (/\d{2}\/\d{2}\/\d{4}/.test(v)) patterns.add('DD/MM/YYYY');
+                if (/\d{4}-\d{2}-\d{2}/.test(v)) patterns.add('YYYY-MM-DD');
+                if (/\d{2}-\d{2}-\d{4}/.test(v)) patterns.add('DD-MM-YYYY');
+            }
+            if (patterns.size > 1)
+                issues.push({ type: 'date', severity: 'warning', message: `Colonne '${col}' : formats de date mixtes (${[...patterns].join(', ')})` });
+        }
     }
 
-    // Texte dans numérique
-    const numLike = vals.filter(v => /\d/.test(v) && !/^\s*-?\d+(\.\d+)?\s*$/.test(v.replace(/[,\s]/g, ''))).length;
-    if (numLike / vals.length > 0.35) textInNum.push(col);
-
-    // Type suspect (texte devrait être numérique)
-    const strVals = vals;
-    const convOk = strVals.filter(v => !isNaN(parseFloat(v.replace(/[^\d.\-]/g,'')))).length;
-    if (convOk / strVals.length > 0.75 && strVals.some(v => /[^\d.\-]/.test(v))) suspectTypes++;
-  });
-
-  const co1 = binaryIncoh.length === 0 ? 7 : Math.max(0, 7 - binaryIncoh.length * 2);
-  const co2 = dateMixed.length === 0 ? 6 : Math.max(0, 6 - dateMixed.length * 3);
-  const co3 = textInNum.length === 0 ? 6 : Math.max(0, 6 - textInNum.length * 2);
-  const co4 = Math.max(0, 6 - suspectTypes * 2);
-  const scoreCohe = Math.min(25, co1 + co2 + co3 + co4);
-
-  const coheDetails = {
-    score: scoreCohe, binaryIncoh, dateMixed, textInNum, suspectTypes,
-    subs: [
-      { l: 'CO1 — Codes binaires', v: co1, m: 7 },
-      { l: 'CO2 — Formats dates', v: co2, m: 6 },
-      { l: 'CO3 — Texte/numérique', v: co3, m: 6 },
-      { l: 'CO4 — Types colonnes', v: co4, m: 6 },
-    ]
-  };
-
-  // ═══ DOCUMENTATION (/25) ═══
-  const DICT_KW  = ['dictionnaire','dictionary','codebook','metadata','metadonnee','variables','legende','definitions'];
-  const README_KW = ['readme','notes','note','documentation','about','info'];
-  const UNIT_PAT  = [/_kg$/i,/_ha$/i,/_pct$/i,/_m2$/i,/_km$/i,/_t$/i,/\(kg\)/i,/\(ha\)/i,/\(%\)/i,/_nb$/i];
-
-  const sheetNamesLower = Object.keys(allSheets).map(s => s.toLowerCase());
-  const hasDict   = DICT_KW.some(k => sheetNamesLower.some(s => s.includes(k)));
-  const hasReadme = README_KW.some(k => sheetNamesLower.some(s => s.includes(k)));
-
-  const explicitNames = cols.filter(c => {
-    const s = String(c);
-    return s.length > 3 && !/^unnamed/i.test(s) && !/^col\d+$/i.test(s) && !/^[a-z]\d+$/i.test(s);
-  });
-  const ratioExpl = explicitNames.length / nc;
-  const d1 = Math.round(ratioExpl * 7);
-  const d2 = hasDict ? 7 : 0;
-  const d3 = hasReadme ? 6 : 0;
-  const colsWithUnits = cols.filter(c => UNIT_PAT.some(p => p.test(c)));
-  const d4 = Math.min(5, colsWithUnits.length);
-  const scoreDocu = d1 + d2 + d3 + d4;
-
-  const docuDetails = {
-    score: scoreDocu, ratioExpl: +(ratioExpl * 100).toFixed(1),
-    hasDict, hasReadme, unitsCount: colsWithUnits.length,
-    subs: [
-      { l: 'D1 — Noms explicites', v: d1, m: 7 },
-      { l: 'D2 — Dictionnaire', v: d2, m: 7 },
-      { l: 'D3 — README / Notes', v: d3, m: 6 },
-      { l: 'D4 — Unités colonnes', v: d4, m: 5 },
-    ]
-  };
-
-  // ═══ INTEROPÉRABILITÉ (/25) ═══
-  const emptyRows = rows.filter(r => cols.every(c => isNull(r[c]))).length;
-  const dupCols = nc - new Set(cols).size;
-  const unnamedCols = cols.filter(c => /^unnamed/i.test(String(c))).length;
-  const in1Pen = emptyRows + dupCols * 2 + unnamedCols * 3;
-  const in1 = Math.max(0, 7 - in1Pen);
-
-  // Types stables
-  let suspNum = 0;
-  cols.forEach(col => {
-    const vals = colValues(col).filter(v => !isNull(v)).map(v => String(v).trim());
-    if (!vals.length) return;
-    const hasText = vals.some(v => /[a-zA-ZÀ-ÿ]/.test(v));
-    if (hasText) {
-      const canConv = vals.filter(v => !isNaN(parseFloat(v.replace(/[^\d.\-]/g,'')))).length;
-      if (canConv / vals.length > 0.7) suspNum++;
+    for (const col of APP.columns) {
+        if (!isNumericCol(col)) continue;
+        const vals = numericValues(col);
+        if (vals.length < 10) continue;
+        vals.sort((a, b) => a - b);
+        const q1 = vals[Math.floor(vals.length * 0.25)], q3 = vals[Math.floor(vals.length * 0.75)];
+        const iqr = q3 - q1;
+        if (iqr > 0) {
+            const outliers = vals.filter(v => v < q1 - 3 * iqr || v > q3 + 3 * iqr).length;
+            if (outliers > 0)
+                issues.push({ type: 'outliers', severity: 'info', message: `Colonne '${col}' : ${outliers} valeur(s) potentiellement anormale(s)` });
+        }
     }
-  });
-  const in2 = Math.max(0, 7 - suspNum * 2);
 
-  // Identifiants
-  const idCols = cols.filter(c => ['id','code','identif','parc','num','ref'].some(k => c.toLowerCase().includes(k)));
-  let in3 = 5;
-  idCols.forEach(col => {
-    const vals = colValues(col).filter(v => !isNull(v)).map(v => String(v).trim()).slice(0, 50);
-    const fmts = new Set();
-    vals.forEach(v => {
-      if (/^[A-Z]-\d+$/.test(v))    fmts.add('PREFIX');
-      else if (/^\d+$/.test(v))      fmts.add('NUM');
-      else if (/^[A-Za-z]+ \d+$/.test(v)) fmts.add('TEXT');
-      else if (/^\d{3}$/.test(v))    fmts.add('PAD');
+    return { n_rows: n, n_cols: nc, totalMissing, missingPct, n_duplicates: nDup, emptyCols, issues, missingPerCol };
+}
+
+function renderStep2() {
+    if (!APP.data) return '<div class="card"><p>Veuillez d\'abord importer un fichier.</p></div>';
+    const report = analyzeQuality();
+    APP.qualityReport = report;
+
+    let html = `<div class="page-header"><h2>Étape 2 : Problèmes de qualité détectés</h2><p>Analyse automatique de votre jeu de données</p></div>`;
+    html += `<div class="metrics">
+        <div class="metric"><div class="val">${report.totalMissing} <span style="font-size:.9rem">(${report.missingPct}%)</span></div><div class="label">Valeurs manquantes</div></div>
+        <div class="metric"><div class="val">${report.n_duplicates}</div><div class="label">Doublons</div></div>
+        <div class="metric"><div class="val">${report.emptyCols.length}</div><div class="label">Colonnes vides</div></div>
+        <div class="metric"><div class="val">${report.issues.length}</div><div class="label">Problèmes</div></div>
+    </div>`;
+
+    if (report.issues.length === 0) {
+        html += '<div class="issue info">✅ <strong>Aucun problème majeur détecté.</strong></div>';
+    } else {
+        for (const issue of report.issues) {
+            const icon = issue.severity === 'critical' ? '🔴' : issue.severity === 'warning' ? '🟡' : 'ℹ️';
+            html += `<div class="issue ${issue.severity}">${icon} <strong>${issue.message}</strong></div>`;
+        }
+    }
+
+    if (report.totalMissing > 0) {
+        html += `<div class="card" style="margin-top:1rem"><h3>Valeurs manquantes par colonne</h3>`;
+        const sorted = APP.columns.filter(c => report.missingPerCol[c] > 0).sort((a, b) => report.missingPerCol[b] - report.missingPerCol[a]);
+        for (const col of sorted) {
+            const m = report.missingPerCol[col], p = pct(m, APP.data.length);
+            const color = p > 50 ? 'var(--danger)' : p > 10 ? 'var(--accent)' : 'var(--primary)';
+            html += `<div class="score-bar-row">
+                <span class="score-bar-label">${col}</span>
+                <div class="score-bar-track"><div class="score-bar-fill" style="width:${p}%;background:${color}"></div></div>
+                <span class="score-bar-val" style="color:${color}">${m} (${p}%)</span>
+            </div>`;
+        }
+        html += '</div>';
+    }
+
+    html += navButtons(1, 3, 'Modifier les données →');
+    return html;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// STEP 3: EDIT DATA
+// ═══════════════════════════════════════════════════════════════
+function renderStep3() {
+    if (!APP.data) return '<div class="card"><p>Veuillez d\'abord importer un fichier.</p></div>';
+
+    let html = `<div class="page-header"><h2>Étape 3 : Modifier les données</h2><p>Corrigez directement votre base de données</p></div>`;
+
+    html += `<div class="tabs">
+        <div class="tab active" onclick="showEditTab('edit-cells',this)">Éditer les cellules</div>
+        <div class="tab" onclick="showEditTab('edit-cols',this)">Colonnes</div>
+        <div class="tab" onclick="showEditTab('edit-missing',this)">Valeurs manquantes</div>
+        <div class="tab" onclick="showEditTab('edit-dup',this)">Doublons</div>
+    </div>`;
+
+    // Tab: Edit cells
+    html += `<div id="edit-cells" class="edit-tab">
+        <div class="card"><h3>Modifier les cellules (cliquez sur une valeur pour la modifier)</h3>
+        <div class="table-wrap"><table><tr>${APP.columns.map(c => `<th>${c}</th>`).join('')}<th>Suppr.</th></tr>`;
+    const maxRows = Math.min(50, APP.data.length);
+    for (let i = 0; i < maxRows; i++) {
+        html += '<tr>' + APP.columns.map(c => {
+            const v = APP.data[i][c] ?? '';
+            return `<td><input value="${String(v).replace(/"/g, '&quot;')}" onchange="editCell(${i},'${c.replace(/'/g, "\\'")}',this.value)"></td>`;
+        }).join('') + `<td><button class="btn btn-danger btn-sm" onclick="deleteRow(${i})">✕</button></td></tr>`;
+    }
+    if (APP.data.length > 50) html += `<tr><td colspan="${APP.columns.length + 1}" style="text-align:center;color:#888;padding:.8rem">… ${APP.data.length - 50} lignes supplémentaires non affichées</td></tr>`;
+    html += '</table></div></div></div>';
+
+    // Tab: Columns
+    html += `<div id="edit-cols" class="edit-tab" style="display:none">
+        <div class="card"><h3>Renommer une colonne</h3>
+        <div class="form-row">
+            <div class="form-group"><label>Colonne :</label><select id="rename-col">${APP.columns.map(c => `<option>${c}</option>`).join('')}</select></div>
+            <div class="form-group"><label>Nouveau nom :</label><input id="rename-val"></div>
+        </div>
+        <button class="btn btn-primary" onclick="renameColumn()">Renommer</button></div>
+
+        <div class="card"><h3>Supprimer des colonnes</h3>
+        <div style="display:flex;flex-wrap:wrap;gap:.5rem;margin-bottom:.8rem">
+        ${APP.columns.map(c => `<label style="display:flex;align-items:center;gap:.3rem;font-size:.82rem;background:#f5f5f5;padding:.3rem .6rem;border-radius:6px">
+            <input type="checkbox" class="del-col-check" value="${c}"> ${c}</label>`).join('')}
+        </div>
+        <button class="btn btn-danger" onclick="deleteColumns()">Supprimer les colonnes cochées</button></div>
+
+        <div class="card"><h3>Standardiser les noms de colonnes</h3>
+        <p style="font-size:.83rem;color:#666;margin-bottom:.5rem">Convertit en minuscules, remplace espaces et caractères spéciaux par des underscores.</p>
+        <div class="table-wrap"><table><tr><th>Actuel</th><th>Nouveau nom</th></tr>
+        ${APP.columns.map(c => `<tr><td>${c}</td><td>${c.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,'')}</td></tr>`).join('')}
+        </table></div>
+        <button class="btn btn-accent" onclick="standardizeNames()">Appliquer la standardisation</button></div>
+    </div>`;
+
+    // Tab: Missing values
+    const colsWithMissing = APP.columns.filter(c => countMissing(c) > 0);
+    html += `<div id="edit-missing" class="edit-tab" style="display:none"><div class="card"><h3>Traitement des valeurs manquantes</h3>`;
+    if (colsWithMissing.length === 0) {
+        html += '<p style="color:var(--primary);font-weight:600">✅ Aucune valeur manquante.</p>';
+    } else {
+        html += `<div class="form-row">
+            <div class="form-group"><label>Colonne :</label><select id="fill-col">${colsWithMissing.map(c => `<option value="${c}">${c} (${countMissing(c)} manquants)</option>`).join('')}</select></div>
+            <div class="form-group"><label>Méthode :</label><select id="fill-method">
+                <option value="mean">Moyenne</option><option value="median">Médiane</option>
+                <option value="mode">Mode</option><option value="custom">Valeur personnalisée</option>
+                <option value="drop">Supprimer les lignes</option></select></div>
+        </div>
+        <div class="form-group"><label>Valeur personnalisée (si applicable) :</label><input id="fill-custom"></div>
+        <button class="btn btn-primary" onclick="fillMissing()">Appliquer</button>`;
+    }
+    html += '</div></div>';
+
+    // Tab: Duplicates
+    const nDup = countDuplicates();
+    html += `<div id="edit-dup" class="edit-tab" style="display:none"><div class="card">
+        <h3>Doublons : ${nDup} ligne(s)</h3>`;
+    if (nDup > 0) {
+        html += `<p style="margin-bottom:.8rem">Ces lignes sont des copies exactes d'autres lignes.</p>
+            <button class="btn btn-danger" onclick="removeDuplicates()">Supprimer les doublons</button>`;
+    } else {
+        html += '<p style="color:var(--primary);font-weight:600">✅ Aucun doublon détecté.</p>';
+    }
+    html += '</div></div>';
+
+    html += navButtons(2, 4, 'Documenter les variables →');
+    return html;
+}
+
+function showEditTab(id, el) {
+    document.querySelectorAll('.edit-tab').forEach(t => t.style.display = 'none');
+    document.getElementById(id).style.display = 'block';
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    el.classList.add('active');
+}
+
+function editCell(rowIdx, col, val) {
+    const old = APP.data[rowIdx][col];
+    if (val === '' || val === 'null') APP.data[rowIdx][col] = null;
+    else if (!isNaN(val) && val.trim() !== '') APP.data[rowIdx][col] = parseFloat(val);
+    else APP.data[rowIdx][col] = val;
+    addHistory('Modifier cellule', `Ligne ${rowIdx}, ${col}: "${old}" → "${val}"`);
+}
+
+function deleteRow(idx) {
+    APP.data.splice(idx, 1);
+    addHistory('Supprimer ligne', `Ligne ${idx}`);
+    renderStep();
+}
+
+function renameColumn() {
+    const old = document.getElementById('rename-col').value;
+    const nw = document.getElementById('rename-val').value.trim();
+    if (!nw || nw === old) return;
+    const idx = APP.columns.indexOf(old);
+    if (idx >= 0) APP.columns[idx] = nw;
+    APP.data.forEach(row => { row[nw] = row[old]; delete row[old]; });
+    if (APP.variableDocs[old]) { APP.variableDocs[nw] = APP.variableDocs[old]; delete APP.variableDocs[old]; }
+    addHistory('Renommer colonne', `${old} → ${nw}`);
+    renderStep();
+}
+
+function deleteColumns() {
+    const checks = document.querySelectorAll('.del-col-check:checked');
+    const toDel = [...checks].map(c => c.value);
+    if (toDel.length === 0) return;
+    APP.columns = APP.columns.filter(c => !toDel.includes(c));
+    APP.data.forEach(row => toDel.forEach(c => delete row[c]));
+    addHistory('Supprimer colonnes', toDel.join(', '));
+    renderStep();
+}
+
+function standardizeNames() {
+    const mapping = {};
+    APP.columns.forEach((c, i) => {
+        const nw = c.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+        mapping[c] = nw;
     });
-    if (fmts.size > 1) in3 = Math.max(0, in3 - 2);
-  });
-
-  // Features ML
-  const numericCols = cols.filter(col => {
-    const vals = colValues(col).filter(v => !isNull(v));
-    if (!vals.length) return false;
-    return vals.filter(v => typeof v === 'number' || !isNaN(Number(v))).length / vals.length > 0.8;
-  });
-  const ratioML = numericCols.length / nc;
-  const in4 = ratioML >= .7 ? 6 : ratioML >= .5 ? 5 : ratioML >= .3 ? 3 : ratioML >= .1 ? 1 : 0;
-  const scoreInte = Math.min(25, in1 + in2 + in3 + in4);
-
-  const inteDetails = {
-    score: scoreInte, emptyRows, dupCols, unnamedCols,
-    suspNum, idCols, ratioML: +(ratioML * 100).toFixed(1),
-    subs: [
-      { l: 'IN1 — Structure tabulaire', v: in1, m: 7 },
-      { l: 'IN2 — Types de données', v: in2, m: 7 },
-      { l: 'IN3 — Identifiants', v: in3, m: 5 },
-      { l: 'IN4 — Compatibilité ML', v: in4, m: 6 },
-    ]
-  };
-
-  // ═══ SCORE GLOBAL ═══
-  const total = scoreComp + scoreCohe + scoreDocu + scoreInte;
-  const niveau = total <= 39 ? 'Faible' : total <= 69 ? 'Moyen' : 'Élevé';
-
-  return {
-    total, niveau,
-    rows: n, cols: nc, sheets: Object.keys(allSheets).length,
-    missRate: compDetails.missRate,
-    comp: compDetails, cohe: coheDetails, docu: docuDetails, inte: inteDetails,
-    sheetName, filename: G.filename
-  };
+    const newCols = [];
+    for (const old of APP.columns) {
+        const nw = mapping[old];
+        newCols.push(nw);
+        if (nw !== old) APP.data.forEach(row => { row[nw] = row[old]; delete row[old]; });
+    }
+    APP.columns = newCols;
+    addHistory('Standardiser noms', `${APP.columns.length} colonnes`);
+    renderStep();
 }
 
-// ── RENDU ────────────────────────────────────────────────────
-function scColor(v, m) {
-  const r = v / m;
-  return r < .4 ? '#DC2626' : r < .7 ? '#D97706' : '#059669';
+function fillMissing() {
+    const col = document.getElementById('fill-col').value;
+    const method = document.getElementById('fill-method').value;
+    const custom = document.getElementById('fill-custom').value;
+
+    if (method === 'drop') {
+        const before = APP.data.length;
+        APP.data = APP.data.filter(r => !isNull(r[col]));
+        addHistory('Supprimer lignes (manquants)', `${col}: ${before - APP.data.length} lignes`);
+    } else {
+        let fillVal;
+        const vals = numericValues(col);
+        if (method === 'mean' && vals.length > 0) fillVal = Math.round(vals.reduce((a, b) => a + b, 0) / vals.length * 100) / 100;
+        else if (method === 'median' && vals.length > 0) { vals.sort((a, b) => a - b); fillVal = vals[Math.floor(vals.length / 2)]; }
+        else if (method === 'mode') {
+            const freq = {};
+            APP.data.forEach(r => { if (!isNull(r[col])) freq[r[col]] = (freq[r[col]] || 0) + 1; });
+            fillVal = Object.entries(freq).sort((a, b) => b[1] - a[1])[0]?.[0];
+        } else if (method === 'custom') fillVal = custom;
+
+        if (fillVal !== undefined) {
+            APP.data.forEach(r => { if (isNull(r[col])) r[col] = fillVal; });
+            addHistory(`Remplir manquants (${method})`, `${col} → ${fillVal}`);
+        }
+    }
+    renderStep();
 }
 
-function renderResults(R, rows) {
-  document.getElementById('resultsTitle').textContent = `Rapport — ${R.sheetName}`;
-  document.getElementById('resultsSubtitle').textContent =
-    `${R.filename} · ${R.rows.toLocaleString()} lignes · ${R.cols} colonnes · ${R.sheets} feuille(s) · ${R.missRate}% valeurs manquantes`;
+function removeDuplicates() {
+    const seen = new Set(); const newData = [];
+    for (const row of APP.data) {
+        const key = APP.columns.map(c => String(row[c] ?? '')).join('|');
+        if (!seen.has(key)) { seen.add(key); newData.push(row); }
+    }
+    const removed = APP.data.length - newData.length;
+    APP.data = newData;
+    addHistory('Supprimer doublons', `${removed} lignes`);
+    renderStep();
+}
 
-  // Métriques
-  const mg = document.getElementById('metricsGrid');
-  const mData = [
-    { l: 'Score AI-Readiness', v: R.total + ' / 100', c: scColor(R.total, 100) },
-    { l: 'Complétude', v: R.comp.score + ' / 25', c: scColor(R.comp.score, 25) },
-    { l: 'Cohérence', v: R.cohe.score + ' / 25', c: scColor(R.cohe.score, 25) },
-    { l: 'Documentation', v: R.docu.score + ' / 25', c: scColor(R.docu.score, 25) },
-  ];
-  mg.innerHTML = mData.map(m => `
-    <div class="metric">
-      <div class="metric-lbl">${m.l}</div>
-      <div class="metric-val" style="color:${m.c}">${m.v}</div>
-    </div>`).join('');
+// ═══════════════════════════════════════════════════════════════
+// STEP 4: VARIABLE DOCUMENTATION
+// ═══════════════════════════════════════════════════════════════
+function renderStep4() {
+    if (!APP.data) return '<div class="card"><p>Veuillez d\'abord importer un fichier.</p></div>';
+    const nDoc = Object.keys(APP.variableDocs).length;
+    const nTotal = APP.columns.length;
+    const ratio = nTotal > 0 ? nDoc / nTotal : 0;
 
-  // Jauge
-  drawGauge(R.total);
+    let html = `<div class="page-header"><h2>Étape 4 : Documenter les variables</h2><p>Décrivez chaque variable pour améliorer la réutilisabilité</p></div>`;
+    html += `<div class="card"><div class="progress-bar"><div class="fill" style="width:${ratio * 100}%;background:var(--primary)"></div></div>
+        <p style="text-align:center;font-size:.85rem;margin-top:.3rem"><strong>${nDoc}/${nTotal}</strong> variables documentées</p></div>`;
 
-  // Badge niveau
-  const b = document.getElementById('niveauBadge');
-  const icons = { Faible: '🔴', Moyen: '🟡', Élevé: '🟢' };
-  const cls   = { Faible: 'n-low', Moyen: 'n-mid', Élevé: 'n-high' };
-  b.textContent = icons[R.niveau] + ' Niveau ' + R.niveau;
-  b.className = 'niveau-badge ' + cls[R.niveau];
+    html += `<div class="card"><h3>Sélectionner une variable</h3>
+        <select id="doc-col-select" onchange="renderDocForm()" style="width:100%;padding:.5rem;font-size:.9rem;border:1px solid #ddd;border-radius:6px">
+        ${APP.columns.map(c => `<option value="${c}" ${APP.variableDocs[c] ? 'style="color:var(--primary)"' : ''}>${c} ${APP.variableDocs[c] ? '✓' : ''}</option>`).join('')}</select></div>`;
 
-  // Barres dimensions
-  const db = document.getElementById('dimBars');
-  const dims = [
-    { l: '📊 Complétude', v: R.comp.score },
-    { l: '🔁 Cohérence', v: R.cohe.score },
-    { l: '📄 Documentation', v: R.docu.score },
-    { l: '🔗 Interopérabilité', v: R.inte.score },
-  ];
-  db.innerHTML = dims.map(d => {
-    const col = scColor(d.v, 25), pct = Math.round(d.v / 25 * 100);
-    return `<div class="dim-row">
-      <div class="dim-name">${d.l}</div>
-      <div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${col}"></div></div>
-      <div class="dim-num" style="color:${col}">${d.v}/25</div>
+    html += `<div id="doc-form-container"></div>`;
+
+    // Summary table
+    if (nDoc > 0) {
+        html += `<div class="card"><h3>Résumé de la documentation</h3><div class="table-wrap"><table>
+            <tr><th>Variable</th><th>Description</th><th>Type</th><th>Unité</th><th>Statut</th></tr>`;
+        for (const col of APP.columns) {
+            const doc = APP.variableDocs[col];
+            html += `<tr><td><strong>${col}</strong></td><td>${doc?.description || '—'}</td><td>${doc?.data_type || '—'}</td>
+                <td>${doc?.unit || '—'}</td><td>${doc ? '✅' : '❌'}</td></tr>`;
+        }
+        html += '</table></div></div>';
+    }
+
+    html += navButtons(3, 5, 'Métadonnées →');
+    return html;
+}
+
+function renderDocForm() {
+    const col = document.getElementById('doc-col-select').value;
+    const doc = APP.variableDocs[col] || {};
+    const serie = APP.data.map(r => r[col]).filter(v => !isNull(v));
+    const nMissing = countMissing(col);
+    const nUnique = new Set(serie.map(v => String(v))).size;
+    const isNum = isNumericCol(col);
+
+    let info = `<div class="metrics" style="grid-template-columns:repeat(4,1fr)">
+        <div class="metric"><div class="val" style="font-size:1.2rem">${isNum ? 'Num' : 'Texte'}</div><div class="label">Type détecté</div></div>
+        <div class="metric"><div class="val" style="font-size:1.2rem">${serie.length}</div><div class="label">Non-null</div></div>
+        <div class="metric"><div class="val" style="font-size:1.2rem">${nUnique}</div><div class="label">Uniques</div></div>
+        <div class="metric"><div class="val" style="font-size:1.2rem">${nMissing}</div><div class="label">Manquants</div></div>
     </div>`;
-  }).join('');
 
-  // Sous-critères avec accordéons
-  renderSubsAcc('subComp', R.comp.subs, buildCompExpl(R.comp));
-  renderSubsAcc('subCohe', R.cohe.subs, buildCoheExpl(R.cohe));
-  renderSubsAcc('subDocu', R.docu.subs, buildDocuExpl(R.docu));
-  renderSubsAcc('subInte', R.inte.subs, buildInteExpl(R.inte));
+    const types = ['Numérique continu','Numérique discret','Catégoriel nominal','Catégoriel ordinal','Date/Temps','Texte libre','Binaire','Identifiant'];
 
-  // Recommandations
-  renderRecos(R);
-
-  // Preview
-  renderPreview(rows);
-}
-
-// ── Accordéon : rendu ────────────────────────────────────────
-function renderSubsAcc(id, subs, expls) {
-  document.getElementById(id).innerHTML = subs.map((s, i) => {
-    const pct = Math.round(s.v / s.m * 100);
-    const col = scColor(s.v, s.m);
-    const ex = expls[i] || {};
-    const foundCls = s.v / s.m >= .7 ? 'ok' : s.v / s.m >= .4 ? 'bad' : 'crit';
-    return `
-    <div class="acc-item" id="acc-${id}-${i}">
-      <div class="acc-header" onclick="toggleAcc('acc-${id}-${i}')">
-        <div class="acc-score-bar">
-          <div class="acc-lbl">${s.l}</div>
-          <div class="acc-track"><div class="acc-fill" style="width:${pct}%;background:${col}"></div></div>
-          <div class="acc-num" style="color:${col}">${s.v}/${s.m}</div>
+    let form = `<div class="card"><h3>Documentation de « ${col} »</h3>${info}
+        <div class="form-group"><label>Description :</label><textarea id="doc-desc" rows="2">${doc.description || ''}</textarea></div>
+        <div class="form-row">
+            <div class="form-group"><label>Type de donnée :</label><select id="doc-type">${types.map(t => `<option ${t === doc.data_type ? 'selected' : ''}>${t}</option>`).join('')}</select></div>
+            <div class="form-group"><label>Unité de mesure :</label><input id="doc-unit" value="${doc.unit || ''}"></div>
         </div>
-        <div class="acc-toggle">▶ Voir le détail</div>
-      </div>
-      <div class="acc-body">
-        <div class="acc-section">
-          <div class="acc-section-title">Règle de calcul</div>
-          <div class="acc-rule">${ex.rule || '—'}</div>
+        <div class="form-row">
+            <div class="form-group"><label>Format attendu :</label><input id="doc-format" value="${doc.format || ''}" placeholder="ex: YYYY-MM-DD"></div>
+            <div class="form-group"><label>Valeurs possibles :</label><input id="doc-values" value="${doc.values || ''}" placeholder="ex: 0-100, Oui/Non"></div>
         </div>
-        <div class="acc-section">
-          <div class="acc-section-title">Constat dans vos données</div>
-          <div class="acc-found ${foundCls}">${ex.found || '—'}</div>
+        <div class="form-row">
+            <div class="form-group"><label>Règle de validation :</label><input id="doc-validation" value="${doc.validation || ''}" placeholder="ex: > 0, non vide"></div>
+            <div class="form-group"><label>Exemple de valeur :</label><input id="doc-example" value="${doc.example || ''}"></div>
         </div>
-        <div class="acc-section">
-          <div class="acc-section-title">Calcul du score</div>
-          <div class="acc-calcul">${ex.calc || `Score obtenu : ${s.v} / ${s.m}`}</div>
-        </div>
-        ${ex.ref ? `<div class="acc-ref">📚 ${ex.ref}</div>` : ''}
-      </div>
+        <div class="form-group"><label>Utilité pour l'analyse / l'IA :</label><input id="doc-utility" value="${doc.utility || ''}"></div>
+        <label style="display:flex;align-items:center;gap:.5rem;margin:.5rem 0;font-size:.85rem">
+            <input type="checkbox" id="doc-target" ${doc.is_target ? 'checked' : ''}> Variable cible (target) pour l'IA</label>
+        <button class="btn btn-primary" onclick="saveDocForm()">Enregistrer</button>
     </div>`;
-  }).join('');
+
+    document.getElementById('doc-form-container').innerHTML = form;
 }
 
-function toggleAcc(id) {
-  const el = document.getElementById(id);
-  el.classList.toggle('open');
+function saveDocForm() {
+    const col = document.getElementById('doc-col-select').value;
+    APP.variableDocs[col] = {
+        description: document.getElementById('doc-desc').value,
+        data_type: document.getElementById('doc-type').value,
+        unit: document.getElementById('doc-unit').value,
+        format: document.getElementById('doc-format').value,
+        values: document.getElementById('doc-values').value,
+        validation: document.getElementById('doc-validation').value,
+        example: document.getElementById('doc-example').value,
+        utility: document.getElementById('doc-utility').value,
+        is_target: document.getElementById('doc-target').checked,
+    };
+    renderStep();
+    setTimeout(() => { document.getElementById('doc-col-select').value = col; renderDocForm(); }, 50);
 }
 
-function toggleDef(id) {
-  const el = document.getElementById(id);
-  el.classList.toggle('open');
-}
+// ═══════════════════════════════════════════════════════════════
+// STEP 5: METADATA
+// ═══════════════════════════════════════════════════════════════
+function renderStep5() {
+    const m = APP.metadata;
+    const licenses = ['','CC-BY 4.0','CC-BY-SA 4.0','CC-BY-NC 4.0','CC0 1.0','ODC-ODbL','Autre'];
+    const fields = [
+        ['title','Titre du jeu de données','text'],['author','Auteur(s)','text'],['organization','Organisation','text'],
+        ['country','Pays','text'],['geographic_area','Zone géographique','text'],['collection_period','Période de collecte','text'],
+        ['description','Description','textarea'],['collection_method','Méthode de collecte','textarea'],
+        ['target_population','Population cible','text'],['license','Licence','select'],
+        ['access_conditions',"Conditions d'accès",'text'],['keywords','Mots-clés (séparés par virgules)','text'],
+        ['contact','Contact','text'],['version','Version','text'],['citation','Citation recommandée','textarea']
+    ];
+    const filled = fields.filter(f => m[f[0]]).length;
 
-// ── Explications Complétude ───────────────────────────────────
-function buildCompExpl(C) {
-  const topCols = C.topMiss.slice(0, 3).map(x =>
-    `<span class="found-tag bad">${x.c} (${x.r}%)</span>`).join(' ') || '<span class="found-tag ok">aucune colonne lacunaire</span>';
-  const emptyList = C.emptyCols.length
-    ? C.emptyCols.slice(0,3).map(c => `<span class="found-tag bad">${c}</span>`).join(' ')
-    : '<span class="found-tag ok">aucune</span>';
+    let html = `<div class="page-header"><h2>Étape 5 : Métadonnées du jeu de données</h2><p>Informations générales sur votre jeu de données</p></div>`;
+    html += `<div class="card"><div class="progress-bar"><div class="fill" style="width:${pct(filled, fields.length)}%;background:var(--primary)"></div></div>
+        <p style="text-align:center;font-size:.85rem;margin-top:.3rem"><strong>${filled}/${fields.length}</strong> champs renseignés</p></div>`;
 
-  return [
-    {
-      rule: `Score maximal : 10 pts. Attribution par paliers :<br>
-             0% manquant → 10 | ≤2% → 9 | ≤5% → 8 | ≤10% → 6 | ≤20% → 4 | ≤35% → 2 | >35% → 0`,
-      found: `Taux de valeurs manquantes global calculé : <strong>${C.missRate}%</strong><br>
-              Colonnes les plus lacunaires : ${topCols}<br>
-              Total de cellules vides : <strong>${C.totalNull.toLocaleString()}</strong>`,
-      calc: `Taux global = ${C.missRate}% → palier correspondant → Score C1 = ${C.subs[0].v} / 10`,
-      ref: 'Wang & Strong (1996) — Data quality dimensions'
-    },
-    {
-      rule: `Score maximal : 8 pts. Seuil : colonne incomplète si > 5% de valeurs manquantes.<br>
-             0 colonne → 8 | ≤10% des cols → 7 | ≤25% → 5 | ≤50% → 3 | >50% → 0`,
-      found: `<strong>${C.colsMiss.length}</strong> colonne(s) sur <strong>${C.colsMiss.length + (C.totalNull === 0 ? 1 : 0)}</strong> dépassent le seuil de 5%.<br>
-              Colonnes concernées : ${C.colsMiss.slice(0,4).map(c => `<span class="found-tag bad">${c}</span>`).join(' ') || '<span class="found-tag ok">aucune</span>'}`,
-      calc: `Ratio colonnes incomplètes = ${C.colsMiss.length} cols → palier → Score C2 = ${C.subs[1].v} / 8`,
-      ref: 'Batini & Scannapieco (2016) — Data and Information Quality'
-    },
-    {
-      rule: `Score maximal : 7 pts.<br>
-             Critère binaire : une colonne entièrement vide (100% de valeurs nulles) disqualifie cette dimension.<br>
-             0 colonne vide → 7 pts | ≥1 colonne vide → 0 pt`,
-      found: `Colonnes entièrement vides détectées : ${emptyList}`,
-      calc: `${C.emptyCols.length === 0 ? 'Aucune colonne vide → Score maximal attribué' : `${C.emptyCols.length} colonne(s) vide(s) → Score = 0`} → C3 = ${C.subs[2].v} / 7`,
-      ref: 'Wang & Strong (1996) — Completeness dimension'
+    html += '<div class="card"><h3>Informations générales</h3><div class="form-row">';
+    let colCount = 0;
+    for (const [key, label, type] of fields) {
+        if (type === 'textarea') {
+            if (colCount % 2 !== 0) html += '</div><div class="form-row">';
+            html += `</div><div class="form-group"><label>${label} :</label><textarea id="meta-${key}" rows="2">${m[key] || ''}</textarea></div><div class="form-row">`;
+            colCount = 0;
+        } else if (type === 'select') {
+            html += `<div class="form-group"><label>${label} :</label><select id="meta-${key}">
+                ${licenses.map(l => `<option ${l === m[key] ? 'selected' : ''}>${l}</option>`).join('')}</select></div>`;
+            colCount++;
+        } else {
+            html += `<div class="form-group"><label>${label} :</label><input id="meta-${key}" value="${m[key] || ''}"></div>`;
+            colCount++;
+        }
+        if (colCount === 2) { html += '</div><div class="form-row">'; colCount = 0; }
     }
-  ];
+    html += '</div><button class="btn btn-primary" style="margin-top:.8rem" onclick="saveMetadata()">Enregistrer les métadonnées</button></div>';
+    html += navButtons(4, 6, 'Score FAIR →');
+    return html;
 }
 
-// ── Explications Cohérence ────────────────────────────────────
-function buildCoheExpl(H) {
-  const bList = H.binaryIncoh.length
-    ? H.binaryIncoh.slice(0,4).map(c => `<span class="found-tag bad">${c}</span>`).join(' ')
-    : '<span class="found-tag ok">aucune incohérence détectée</span>';
-  const dList = H.dateMixed.length
-    ? H.dateMixed.map(c => `<span class="found-tag bad">${c}</span>`).join(' ')
-    : '<span class="found-tag ok">aucun format mixte détecté</span>';
-  const tList = H.textInNum.length
-    ? H.textInNum.slice(0,3).map(c => `<span class="found-tag bad">${c}</span>`).join(' ')
-    : '<span class="found-tag ok">aucune colonne mixte détectée</span>';
-
-  return [
-    {
-      rule: `Score maximal : 7 pts. Méthode : pour chaque colonne avec 2 à 8 valeurs uniques,
-             détecter si plusieurs représentations de "oui" (Oui/oui/1/true/o) et/ou "non" (Non/non/0/false/n) coexistent.<br>
-             0 colonne incohérente → 7 | chaque colonne détectée → -2 pts (min 0)`,
-      found: `Colonnes binaires avec codages multiples détectées : ${bList}<br>
-              <small>Exemple : une colonne avec Oui, oui et 1 comme valeurs distinctes est considérée incohérente.</small>`,
-      calc: `${H.binaryIncoh.length} colonne(s) incohérente(s) × 2 pts = ${H.binaryIncoh.length * 2} pts de pénalité<br>Score CO1 = max(0, 7 − ${H.binaryIncoh.length * 2}) = ${H.subs[0].v} / 7`,
-      ref: 'Andrew Ng (2021) — Data-Centric AI : consistency as a prerequisite for model training'
-    },
-    {
-      rule: `Score maximal : 6 pts. Méthode : pour les colonnes dont le nom contient "date", "annee", "mois" ou "year",
-             détecter si plusieurs patterns coexistent : DD/MM/YYYY, YYYY-MM-DD, mois texte, année seule.<br>
-             0 colonne mixte → 6 | chaque colonne → -3 pts (min 0)`,
-      found: `Colonnes avec formats de dates mixtes : ${dList}<br>
-              <small>Standard recommandé : ISO 8601 (YYYY-MM-DD), interprétable sans ambiguïté par tout framework.</small>`,
-      calc: `${H.dateMixed.length} colonne(s) × 3 pts = ${H.dateMixed.length * 3} pts de pénalité<br>Score CO2 = max(0, 6 − ${H.dateMixed.length * 3}) = ${H.subs[1].v} / 6`,
-      ref: 'Sambasivan et al. (2021) — Data quality issues in AI systems'
-    },
-    {
-      rule: `Score maximal : 6 pts. Méthode : une colonne est signalée si plus de 35% de ses valeurs contiennent
-             des chiffres entourés de texte non numérique (ex : "150 000 f", "3 ha", "n/d").<br>
-             0 colonne mixte → 6 | chaque colonne → -2 pts (min 0)`,
-      found: `Colonnes numériques contenant du texte : ${tList}<br>
-              <small>Ces colonnes ne peuvent pas être converties directement en float — prétraitement obligatoire avant tout usage ML.</small>`,
-      calc: `${H.textInNum.length} colonne(s) × 2 pts = ${H.textInNum.length * 2} pts de pénalité<br>Score CO3 = max(0, 6 − ${H.textInNum.length * 2}) = ${H.subs[2].v} / 6`,
-      ref: 'Sambasivan et al. (2021) — "Everyone wants to do the model work, not the data work"'
-    },
-    {
-      rule: `Score maximal : 6 pts. Méthode : détecter les colonnes de type texte dont plus de 75% des valeurs
-             seraient convertibles en nombre après nettoyage — signalant un typage incorrect.<br>
-             0 colonne suspecte → 6 | chaque colonne suspecte → -2 pts (min 0)`,
-      found: `<strong>${H.suspectTypes}</strong> colonne(s) de type texte qui devraient être numériques.<br>
-              <small>Ces colonnes ont été lues comme texte mais contiennent principalement des nombres — probablement à cause de quelques valeurs parasites.</small>`,
-      calc: `${H.suspectTypes} colonne(s) suspecte(s) × 2 pts = ${H.suspectTypes * 2} pts de pénalité<br>Score CO4 = max(0, 6 − ${H.suspectTypes * 2}) = ${H.subs[3].v} / 6`,
-      ref: 'Andrew Ng (2021) — Data-Centric AI principles'
+function saveMetadata() {
+    const fields = ['title','author','organization','country','geographic_area','collection_period','description',
+        'collection_method','target_population','license','access_conditions','keywords','contact','version','citation'];
+    for (const f of fields) {
+        const el = document.getElementById('meta-' + f);
+        if (el) APP.metadata[f] = el.value;
     }
-  ];
+    alert('Métadonnées enregistrées !');
 }
 
-// ── Explications Documentation ────────────────────────────────
-function buildDocuExpl(D) {
-  return [
-    {
-      rule: `Score maximal : 7 pts. Méthode : calculer la proportion de colonnes avec un nom explicite.<br>
-             Un nom est considéré explicite si : longueur > 3 caractères, ne commence pas par "Unnamed" ou "col",
-             n'est pas un identifiant alphanumérique générique (A1, B2...).<br>
-             Résultat = proportion × 7, arrondi à l'entier le plus proche.`,
-      found: `<strong>${D.ratioExpl}%</strong> des colonnes ont des noms explicites.<br>
-              <small>Exemple de bon nom : rendement_kg_ha. Exemple à corriger : rdt, col3, Unnamed: 2.</small>`,
-      calc: `${D.ratioExpl}% × 7 pts = ${D.subs[0].v} / 7`,
-      ref: 'Wilkinson et al. (2016) — FAIR principe R1 : données bien décrites'
-    },
-    {
-      rule: `Score maximal : 7 pts. Critère binaire.<br>
-             Présence d'une feuille dont le nom contient : "dictionnaire", "dictionary", "codebook", "metadata", "variables", "legende", "definitions".<br>
-             Présent → 7 pts | Absent → 0 pt`,
-      found: `Dictionnaire de données : <strong style="color:${D.hasDict ? '#059669' : '#DC2626'}">${D.hasDict ? '✓ Détecté' : '✗ Absent'}</strong><br>
-              <small>${D.hasDict ? 'Une feuille dédiée a été identifiée.' : 'Aucune feuille avec un nom de dictionnaire détecté. Un dictionnaire liste pour chaque variable : nom, type, unité, valeurs admissibles et définition.'}</small>`,
-      calc: `Dictionnaire ${D.hasDict ? 'présent' : 'absent'} → Score D2 = ${D.subs[1].v} / 7`,
-      ref: 'Wilkinson et al. (2016) — FAIR R1.3 : métadonnées conformes aux standards de la communauté'
-    },
-    {
-      rule: `Score maximal : 6 pts. Critère binaire.<br>
-             Présence d'une feuille dont le nom contient : "readme", "notes", "documentation", "about", "info".<br>
-             Présent → 6 pts | Absent → 0 pt`,
-      found: `Feuille README / Notes : <strong style="color:${D.hasReadme ? '#059669' : '#DC2626'}">${D.hasReadme ? '✓ Détectée' : '✗ Absente'}</strong><br>
-              <small>${D.hasReadme ? 'Une feuille de documentation a été identifiée.' : 'Un README doit décrire : source, méthode de collecte, zone géographique, campagne, contact et conditions d\'utilisation.'}</small>`,
-      calc: `README ${D.hasReadme ? 'présent' : 'absent'} → Score D3 = ${D.subs[2].v} / 6`,
-      ref: 'Wilkinson et al. (2016) — FAIR principe F2 : métadonnées décrivant les données'
-    },
-    {
-      rule: `Score maximal : 5 pts. Méthode : compter les colonnes dont le nom contient une unité reconnaissable :
-             _kg, _ha, _pct, _m2, _km, _t, (kg), (ha), (%), _nb.<br>
-             Résultat = min(5, nombre de colonnes avec unité).`,
-      found: `<strong>${D.unitsCount}</strong> colonne(s) avec une unité détectable dans le nom.<br>
-              <small>Bonne pratique : rendement_kg_ha, surface_m2, poids_frais_kg, ombrage_pct. Les unités dans les noms évitent toute ambiguïté d'interprétation.</small>`,
-      calc: `min(5, ${D.unitsCount}) → Score D4 = ${D.subs[3].v} / 5`,
-      ref: 'Wilkinson et al. (2016) — FAIR I1 : utilisation de langages formels et standards'
+// ═══════════════════════════════════════════════════════════════
+// STEP 6: FAIR SCORE
+// ═══════════════════════════════════════════════════════════════
+function computeFAIR() {
+    const m = APP.metadata, d = APP.variableDocs, df = APP.data, cols = APP.columns;
+    const scores = { F: 0, A: 0, I: 0, R: 0 };
+    const details = { F: [], A: [], I: [], R: [] };
+    const maxS = { F: 25, A: 25, I: 25, R: 25 };
+
+    const check = (letter, pts, cond, ok, fail) => {
+        if (cond) { scores[letter] += pts; details[letter].push(['ok', ok]); }
+        else details[letter].push(['missing', fail]);
+    };
+
+    check('F', 5, m.title, 'Titre renseigné', 'Titre manquant');
+    check('F', 5, m.description, 'Description renseignée', 'Description manquante');
+    check('F', 5, m.keywords, 'Mots-clés renseignés', 'Mots-clés manquants');
+    check('F', 5, m.author, 'Auteur renseigné', 'Auteur manquant');
+    check('F', 5, m.version, 'Version renseignée', 'Version manquante');
+
+    check('A', 8, m.license, 'Licence définie', 'Licence manquante');
+    check('A', 7, m.access_conditions, "Conditions d'accès définies", "Conditions d'accès manquantes");
+    check('A', 5, m.contact, 'Contact renseigné', 'Contact manquant');
+    check('A', 5, m.citation, 'Citation recommandée définie', 'Citation recommandée manquante');
+
+    const goodNames = cols.filter(c => c.length > 3 && !c.startsWith('Unnamed')).length;
+    const nameRatio = cols.length > 0 ? goodNames / cols.length : 0;
+    scores.I += Math.round(nameRatio * 8);
+    details.I.push([nameRatio > 0.8 ? 'ok' : 'missing', `Noms de colonnes explicites : ${goodNames}/${cols.length}`]);
+
+    const nNumeric = cols.filter(c => isNumericCol(c)).length;
+    const typeRatio = cols.length > 0 ? nNumeric / cols.length : 0;
+    scores.I += Math.round(typeRatio * 7);
+    details.I.push([typeRatio > 0.5 ? 'ok' : 'missing', `Colonnes typées : ${nNumeric}/${cols.length}`]);
+    scores.I += 5; details.I.push(['ok', 'Format standard (CSV/Excel)']);
+    const docRatio = cols.length > 0 ? Object.keys(d).length / cols.length : 0;
+    scores.I += Math.round(docRatio * 5);
+    details.I.push([docRatio > 0.5 ? 'ok' : 'missing', `Variables documentées : ${Object.keys(d).length}/${cols.length}`]);
+
+    check('R', 6, m.license, 'Licence définie pour réutilisation', 'Licence nécessaire pour la réutilisation');
+    check('R', 5, m.collection_method, 'Méthode de collecte documentée', 'Méthode de collecte manquante');
+    check('R', 4, m.geographic_area, 'Zone géographique renseignée', 'Zone géographique manquante');
+
+    const totalCells = df.length * cols.length;
+    let totalMiss = 0; cols.forEach(c => totalMiss += countMissing(c));
+    const missPct = totalCells > 0 ? totalMiss / totalCells * 100 : 100;
+    if (missPct < 5) { scores.R += 5; details.R.push(['ok', `Complétude élevée (${(100 - missPct).toFixed(1)}%)`]); }
+    else if (missPct < 20) { scores.R += 3; details.R.push(['partial', `Complétude moyenne (${(100 - missPct).toFixed(1)}%)`]); }
+    else details.R.push(['missing', `Complétude faible (${(100 - missPct).toFixed(1)}%)`]);
+
+    scores.R += Math.round(docRatio * 5);
+    details.R.push([docRatio > 0.5 ? 'ok' : 'missing', `Dictionnaire de données : ${Object.keys(d).length}/${cols.length}`]);
+
+    return { scores, details, total: scores.F + scores.A + scores.I + scores.R, max: 100, maxS };
+}
+
+function renderStep6() {
+    if (!APP.data) return '<div class="card"><p>Veuillez d\'abord importer un fichier.</p></div>';
+    const fair = computeFAIR();
+    APP.fairScore = fair;
+
+    let html = `<div class="page-header"><h2>Étape 6 : Conformité FAIR</h2><p>Findable · Accessible · Interoperable · Reusable</p></div>`;
+
+    const levelColor = scoreColor(fair.total / 100);
+    html += `<div class="card"><div class="score-display">
+        <div class="score-big" style="color:${levelColor}">${fair.total}</div>
+        <div class="score-max">/100</div>
+        <div class="score-level" style="background:${levelColor};color:#fff">${fair.total <= 39 ? 'Faible' : fair.total <= 69 ? 'Moyen' : 'Élevé'}</div>
+    </div></div>`;
+
+    html += '<div class="fair-row">';
+    for (const [letter, name] of [['F','Findable'],['A','Accessible'],['I','Interoperable'],['R','Reusable']]) {
+        const ratio = fair.scores[letter] / fair.maxS[letter];
+        html += `<div class="fair-item"><span class="fair-letter" style="background:${scoreColor(ratio)}">${letter}</span>
+            <span class="fair-label">${name}<br><strong>${fair.scores[letter]}/${fair.maxS[letter]}</strong></span></div>`;
     }
-  ];
-}
+    html += '</div>';
 
-// ── Explications Interopérabilité ─────────────────────────────
-function buildInteExpl(I) {
-  const idList = I.idCols.length
-    ? I.idCols.slice(0,4).map(c => `<span class="found-tag">${c}</span>`).join(' ')
-    : '<span class="found-tag ok">aucune colonne ID détectée</span>';
-
-  return [
-    {
-      rule: `Score maximal : 7 pts. Méthode : pénaliser les défauts structurels :<br>
-             chaque ligne entièrement vide → -1 pt | colonne dupliquée → -2 pts | colonne "Unnamed" → -3 pts<br>
-             Score = max(0, 7 − pénalités)`,
-      found: `Lignes entièrement vides : <strong>${I.emptyRows}</strong><br>
-              Colonnes dupliquées : <strong>${I.dupCols}</strong><br>
-              Colonnes "Unnamed" (en-têtes manquants) : <strong>${I.unnamedCols}</strong>`,
-      calc: `Pénalité totale = ${I.emptyRows}×1 + ${I.dupCols}×2 + ${I.unnamedCols}×3 = ${I.emptyRows + I.dupCols*2 + I.unnamedCols*3}<br>Score IN1 = max(0, 7 − ${I.emptyRows + I.dupCols*2 + I.unnamedCols*3}) = ${I.subs[0].v} / 7`,
-      ref: 'Lawrence (2017) — FAIR Data in Earth Sciences'
-    },
-    {
-      rule: `Score maximal : 7 pts. Méthode : détecter les colonnes texte dont > 75% des valeurs seraient
-             convertibles en nombre après suppression des caractères non numériques — signalant un typage incorrect.<br>
-             0 colonne suspecte → 7 | chaque colonne → -2 pts (min 0)`,
-      found: `<strong>${I.suspNum}</strong> colonne(s) avec un type de données instable (texte contenant des nombres).<br>
-              <small>Ces colonnes bloquent l'ingestion directe dans pandas/scikit-learn/R — conversion obligatoire avant tout pipeline ML.</small>`,
-      calc: `${I.suspNum} colonne(s) × 2 pts = ${I.suspNum*2} pts de pénalité<br>Score IN2 = max(0, 7 − ${I.suspNum*2}) = ${I.subs[1].v} / 7`,
-      ref: 'Wilkinson et al. (2016) — FAIR I2 : vocabulaires formels et accessibles'
-    },
-    {
-      rule: `Score maximal : 5 pts. Méthode : détecter les colonnes "ID/code/parcelle/référence".
-             Pour chacune, vérifier si plusieurs formats coexistent dans les valeurs :
-             P-001, 001, Parcelle 1, 1 → incohérent → -2 pts par colonne problématique.<br>
-             Aucun problème → 5 pts | min 0`,
-      found: `Colonnes identifiants détectées : ${idList}<br>
-              <small>Une incohérence de format (ex : "P-001" vs "001" vs "Parcelle 1" dans la même colonne) rend la jointure entre tables automatiquement impossible.</small>`,
-      calc: `Score IN3 = ${I.subs[2].v} / 5`,
-      ref: 'Wilkinson et al. (2016) — FAIR F1 : identifiant unique et pérenne pour chaque entité'
-    },
-    {
-      rule: `Score maximal : 6 pts. Méthode : calculer le ratio de colonnes directement exploitables en ML
-             (colonnes dont > 80% des valeurs non nulles sont numériques).<br>
-             ≥70% → 6 | ≥50% → 5 | ≥30% → 3 | ≥10% → 1 | <10% → 0`,
-      found: `<strong>${I.ratioML}%</strong> des colonnes sont directement exploitables comme features dans un modèle ML.<br>
-              <small>Les colonnes catégorielles (texte) nécessitent un encodage (LabelEncoder, OneHotEncoder) avant utilisation dans scikit-learn, TensorFlow ou R.</small>`,
-      calc: `Ratio ML = ${I.ratioML}% → palier → Score IN4 = ${I.subs[3].v} / 6`,
-      ref: 'Wilkinson et al. (2016) — FAIR I3 : références qualifiées vers autres ressources'
+    for (const [letter, name] of [['F','Findable'],['A','Accessible'],['I','Interoperable'],['R','Reusable']]) {
+        html += `<div class="card"><h3>${letter} — ${name} (${fair.scores[letter]}/${fair.maxS[letter]})</h3>`;
+        for (const [status, msg] of fair.details[letter]) {
+            const icon = status === 'ok' ? '✅' : status === 'partial' ? '⚠️' : '❌';
+            html += `<p style="margin:.2rem 0;font-size:.85rem">${icon} ${msg}</p>`;
+        }
+        html += '</div>';
     }
-  ];
+
+    html += navButtons(5, 7, 'Score AI Readiness →');
+    return html;
 }
 
-function renderRecos(R) {
-  const recos = [];
-  const C = R.comp, H = R.cohe, D = R.docu, I = R.inte;
+// ═══════════════════════════════════════════════════════════════
+// STEP 7: AI READINESS
+// ═══════════════════════════════════════════════════════════════
+function computeAI() {
+    const df = APP.data, cols = APP.columns, m = APP.metadata, d = APP.variableDocs;
+    const dims = {}, details = {};
+    const maxD = { 'Complétude': 20, 'Cohérence': 15, 'Documentation': 15, 'Qualité des variables': 15, 'Variable cible': 10, 'Structure': 15, 'Données sensibles': 10 };
 
-  if (C.missRate > 20) recos.push({ p: 'URGENT', d: 'Complétude', t: `Taux de valeurs manquantes élevé (${C.missRate}%). Appliquer une imputation (moyenne/médiane) ou documenter les raisons des données manquantes.` });
-  if (C.emptyCols.length) recos.push({ p: 'URGENT', d: 'Complétude', t: `${C.emptyCols.length} colonne(s) entièrement vide(s) : ${C.emptyCols.slice(0,3).join(', ')}. Supprimer avant tout usage analytique.` });
-  if (C.missRate > 5 && C.missRate <= 20) recos.push({ p: 'IMPORTANT', d: 'Complétude', t: `${C.colsMiss.length} colonnes présentent > 5% de valeurs manquantes. Vérifier et envisager une imputation ciblée.` });
+    const totalCells = df.length * cols.length;
+    let totalMiss = 0; cols.forEach(c => totalMiss += countMissing(c));
+    const missPct = totalCells > 0 ? totalMiss / totalCells * 100 : 100;
+    dims['Complétude'] = missPct === 0 ? 20 : missPct <= 2 ? 18 : missPct <= 5 ? 15 : missPct <= 10 ? 12 : missPct <= 20 ? 8 : missPct <= 35 ? 4 : 0;
+    details['Complétude'] = [`Taux de valeurs manquantes : ${missPct.toFixed(1)}%`];
 
-  if (H.binaryIncoh.length) recos.push({ p: 'URGENT', d: 'Cohérence', t: `Codes binaires incohérents dans : ${H.binaryIncoh.slice(0,3).join(', ')}. Standardiser en 0/1 ou Oui/Non uniformément.` });
-  if (H.dateMixed.length) recos.push({ p: 'URGENT', d: 'Cohérence', t: `Formats de dates mixtes dans : ${H.dateMixed.join(', ')}. Normaliser au format ISO 8601 (YYYY-MM-DD).` });
-  if (H.textInNum.length) recos.push({ p: 'IMPORTANT', d: 'Cohérence', t: `Texte dans colonnes numériques : ${H.textInNum.slice(0,3).join(', ')}. Nettoyer avec pandas/OpenRefine.` });
+    const nDup = countDuplicates();
+    const dupPct = df.length > 0 ? nDup / df.length * 100 : 0;
+    let s2 = 15;
+    if (dupPct > 20) s2 -= 8; else if (dupPct > 5) s2 -= 4; else if (dupPct > 0) s2 -= 2;
+    dims['Cohérence'] = Math.max(0, s2);
+    details['Cohérence'] = [`Doublons : ${nDup} (${dupPct.toFixed(1)}%)`];
 
-  if (!D.hasDict) recos.push({ p: 'URGENT', d: 'Documentation', t: `Dictionnaire de données absent. Créer une feuille "Dictionnaire" avec nom, type, unité, valeurs admissibles et définition de chaque variable. Standard : Frictionless Data Package.` });
-  if (!D.hasReadme) recos.push({ p: 'IMPORTANT', d: 'Documentation', t: `README absent. Ajouter une feuille "README" : source, méthode, zone géographique, campagne, contact, licence.` });
-  if (D.ratioExpl < 80) recos.push({ p: 'IMPORTANT', d: 'Documentation', t: `Seulement ${D.ratioExpl}% des colonnes ont des noms explicites. Renommer : rendmt_kg → rendement_kg_ha, surf → surface_ha.` });
-  if (D.unitsCount === 0) recos.push({ p: 'AMÉLIORATION', d: 'Documentation', t: `Aucune unité détectée dans les noms de colonnes. Ajouter un suffixe : _kg, _ha, _pct, _m2.` });
+    const docRatio = cols.length > 0 ? Object.keys(d).length / cols.length : 0;
+    let s3 = Math.round(docRatio * 10);
+    if (m.description) s3 += 3;
+    if (m.collection_method) s3 += 2;
+    dims['Documentation'] = Math.min(15, s3);
+    details['Documentation'] = [`Variables documentées : ${Object.keys(d).length}/${cols.length}`];
 
-  if (I.suspNum > 0) recos.push({ p: 'URGENT', d: 'Interopérabilité', t: `${I.suspNum} colonne(s) de type texte devraient être numériques. Convertir avec pd.to_numeric() après nettoyage.` });
-  if (I.ratioML < 40) recos.push({ p: 'IMPORTANT', d: 'Interopérabilité', t: `Seulement ${I.ratioML}% des colonnes directement exploitables en ML. Encoder les variables catégorielles (LabelEncoder, OneHot).` });
-  if (I.emptyRows > 0) recos.push({ p: 'IMPORTANT', d: 'Interopérabilité', t: `${I.emptyRows} ligne(s) entièrement vide(s). Supprimer avec df.dropna(how='all').` });
+    const goodNames = cols.filter(c => c.length > 3 && !c.startsWith('Unnamed')).length;
+    const nameRatio = cols.length > 0 ? goodNames / cols.length : 0;
+    const nNumeric = cols.filter(c => isNumericCol(c)).length;
+    const featRatio = cols.length > 0 ? nNumeric / cols.length : 0;
+    dims['Qualité des variables'] = Math.min(15, Math.round(nameRatio * 8) + Math.round(featRatio * 7));
+    details['Qualité des variables'] = [`Noms explicites : ${goodNames}/${cols.length}`, `Features numériques : ${nNumeric}/${cols.length}`];
 
-  recos.push({ p: 'AMÉLIORATION', d: 'FAIR & Dépôt', t: `Déposer sur Zenodo ou DataSuds (IRD) pour obtenir un DOI pérenne. Réf : Wilkinson et al. (2016).` });
-  recos.push({ p: 'AMÉLIORATION', d: 'FAIR & Dépôt', t: `Attribuer une licence CC-BY 4.0 pour autoriser la réutilisation scientifique. Indispensable pour la conformité FAIR.` });
+    const targetKw = ['target','cible','label','classe','class','output','yield','rendement','production'];
+    let hasTarget = cols.some(c => targetKw.some(k => c.toLowerCase().includes(k)));
+    if (!hasTarget) hasTarget = Object.values(d).some(v => v.is_target);
+    dims['Variable cible'] = hasTarget ? 10 : 0;
+    details['Variable cible'] = [`Variable cible identifiée : ${hasTarget ? 'Oui' : 'Non'}`];
 
-  const styles = {
-    URGENT:       ['reco reco-u', 'tag tag-u'],
-    IMPORTANT:    ['reco reco-i', 'tag tag-i'],
-    AMÉLIORATION: ['reco reco-a', 'tag tag-a'],
-  };
-  document.getElementById('recosList').innerHTML = recos.map(r => {
-    const [rc, tc] = styles[r.p] || styles['AMÉLIORATION'];
-    return `<div class="${rc}">
-      <span class="${tc}">${r.p}</span>
-      <div><strong style="font-size:11px;display:block;margin-bottom:2px">${r.d}</strong>${r.t}</div>
+    let s6 = 15;
+    const emptyCols = cols.filter(c => countMissing(c) === df.length).length;
+    const emptyRows = df.filter(r => cols.every(c => isNull(r[c]))).length;
+    if (emptyCols > 0) s6 -= 5;
+    if (emptyRows > 0) s6 -= 3;
+    if (df.length < 30) s6 -= 4; else if (df.length < 100) s6 -= 2;
+    dims['Structure'] = Math.max(0, s6);
+    details['Structure'] = [`Colonnes vides : ${emptyCols}, Lignes vides : ${emptyRows}`, `Observations : ${df.length}`];
+
+    const sensitiveKw = ['nom','name','prenom','surname','telephone','phone','email','adresse','address','ssn','cin'];
+    const sensitiveCols = cols.filter(c => sensitiveKw.some(k => c.toLowerCase().includes(k)));
+    let s7 = Math.max(0, 10 - sensitiveCols.length * 3);
+    dims['Données sensibles'] = s7;
+    details['Données sensibles'] = [`Colonnes sensibles : ${sensitiveCols.length > 0 ? sensitiveCols.join(', ') : 'Aucune'}`];
+
+    const total = Object.values(dims).reduce((a, b) => a + b, 0);
+    const level = total <= 39 ? ['Faible', 'var(--danger)'] : total <= 69 ? ['Moyen', 'var(--accent)'] : ['Élevé', 'var(--primary)'];
+
+    return { dims, details, total, max: 100, maxD, level };
+}
+
+function renderStep7() {
+    if (!APP.data) return '<div class="card"><p>Veuillez d\'abord importer un fichier.</p></div>';
+    const ai = computeAI();
+    APP.aiScore = ai;
+
+    let html = `<div class="page-header"><h2>Étape 7 : AI Readiness</h2><p>Évaluation de la préparation à l'intelligence artificielle</p></div>`;
+
+    html += `<div class="card"><div class="score-display">
+        <div class="score-big" style="color:${ai.level[1]}">${ai.total}</div>
+        <div class="score-max">/100</div>
+        <div class="score-level" style="background:${ai.level[1]};color:#fff">${ai.level[0]}</div>
+    </div></div>`;
+
+    html += '<div class="card"><h3>Scores par dimension</h3>';
+    for (const [dim, score] of Object.entries(ai.dims)) {
+        const mx = ai.maxD[dim], ratio = mx > 0 ? score / mx : 0;
+        const color = scoreColor(ratio);
+        html += `<div class="score-bar-row">
+            <span class="score-bar-label">${dim}</span>
+            <div class="score-bar-track"><div class="score-bar-fill" style="width:${ratio * 100}%;background:${color}"></div></div>
+            <span class="score-bar-val" style="color:${color}">${score}/${mx}</span>
+        </div>`;
+    }
+    html += '</div>';
+
+    for (const [dim, lines] of Object.entries(ai.details)) {
+        html += `<div class="card"><h3>${dim} — ${ai.dims[dim]}/${ai.maxD[dim]}</h3>`;
+        for (const line of lines) html += `<p style="margin:.2rem 0;font-size:.85rem">• ${line}</p>`;
+        html += '</div>';
+    }
+
+    html += navButtons(6, 8, 'Recommandations →');
+    return html;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// STEP 8: RECOMMENDATIONS
+// ═══════════════════════════════════════════════════════════════
+function generateRecos() {
+    const recos = [];
+    const q = APP.qualityReport || analyzeQuality();
+    const m = APP.metadata;
+
+    if (q.missingPct > 20) recos.push(['urgent', 'Compléter les données', `Taux de valeurs manquantes élevé (${q.missingPct}%). Appliquer une stratégie d'imputation ou documenter les raisons.`]);
+    else if (q.missingPct > 5) recos.push(['important', 'Réduire les valeurs manquantes', `${q.missingPct}% de valeurs manquantes. Vérifier les colonnes critiques.`]);
+    if (q.n_duplicates > 0) recos.push(['important', 'Supprimer les doublons', `${q.n_duplicates} ligne(s) en doublon détectée(s).`]);
+    if (q.emptyCols.length > 0) recos.push(['urgent', 'Supprimer les colonnes vides', `${q.emptyCols.length} colonne(s) vide(s) : ${q.emptyCols.join(', ')}`]);
+
+    const missingMeta = ['title','author','description','license','keywords','contact'].filter(f => !m[f]);
+    if (missingMeta.length > 0) recos.push([missingMeta.length > 3 ? 'urgent' : 'important', 'Compléter les métadonnées', `Champs manquants : ${missingMeta.join(', ')}`]);
+
+    const nUndoc = APP.columns.length - Object.keys(APP.variableDocs).length;
+    if (nUndoc > 0) recos.push(['important', 'Documenter les variables', `${nUndoc} variable(s) non documentée(s).`]);
+    if (!m.license) recos.push(['urgent', 'Ajouter une licence', 'CC-BY 4.0 est recommandée pour les données ouvertes.']);
+
+    const badNames = APP.columns.filter(c => c.length <= 2 || c.startsWith('Unnamed')).length;
+    if (badNames > 0) recos.push(['important', 'Améliorer les noms de colonnes', `${badNames} colonne(s) avec des noms peu explicites.`]);
+
+    const sensitiveKw = ['nom','name','prenom','telephone','phone','email','adresse','address'];
+    const sensitive = APP.columns.filter(c => sensitiveKw.some(k => c.toLowerCase().includes(k)));
+    if (sensitive.length > 0) recos.push(['important', 'Anonymiser les données sensibles', `Colonnes sensibles : ${sensitive.join(', ')}`]);
+
+    recos.push(['improve', 'Déposer sur un entrepôt', 'Déposer le dataset sur Zenodo ou Dataverse pour obtenir un DOI pérenne (principe FAIR).']);
+
+    const order = { urgent: 0, important: 1, improve: 2 };
+    recos.sort((a, b) => order[a[0]] - order[b[0]]);
+    return recos;
+}
+
+function renderStep8() {
+    if (!APP.data) return '<div class="card"><p>Veuillez d\'abord importer un fichier.</p></div>';
+    if (!APP.qualityReport) APP.qualityReport = analyzeQuality();
+    const recos = generateRecos();
+    APP.recommendations = recos;
+
+    let html = `<div class="page-header"><h2>Étape 8 : Recommandations</h2><p>Actions concrètes pour améliorer votre jeu de données</p></div>`;
+
+    const nU = recos.filter(r => r[0] === 'urgent').length;
+    const nI = recos.filter(r => r[0] === 'important').length;
+    const nA = recos.filter(r => r[0] === 'improve').length;
+    html += `<div class="metrics" style="grid-template-columns:repeat(3,1fr)">
+        <div class="metric" style="border-top-color:var(--danger)"><div class="val" style="color:var(--danger)">${nU}</div><div class="label">Urgentes</div></div>
+        <div class="metric" style="border-top-color:var(--accent)"><div class="val" style="color:var(--accent)">${nI}</div><div class="label">Importantes</div></div>
+        <div class="metric" style="border-top-color:var(--primary)"><div class="val" style="color:var(--primary)">${nA}</div><div class="label">Améliorations</div></div>
     </div>`;
-  }).join('');
+
+    for (const [prio, title, desc] of recos) {
+        const icon = prio === 'urgent' ? '🔴' : prio === 'important' ? '🟡' : '🟢';
+        html += `<div class="reco ${prio}"><strong>${icon} ${title}</strong>${desc}</div>`;
+    }
+
+    html += navButtons(7, 9, 'Exporter →');
+    return html;
 }
 
-function renderPreview(rows) {
-  if (!rows.length) return;
-  const cols = Object.keys(rows[0]);
-  const shown = rows.slice(0, 10);
-  const head = `<tr>${cols.map(c => `<th>${c}</th>`).join('')}</tr>`;
-  const body = shown.map(r =>
-    `<tr>${cols.map(c => {
-      const v = r[c];
-      const isNull = v === null || v === undefined || v === '';
-      return `<td class="${isNull ? 'null-cell miss-hi' : ''}">${isNull ? '—' : v}</td>`;
-    }).join('')}</tr>`
-  ).join('');
-  document.getElementById('previewTable').innerHTML =
-    `<table class="preview-table"><thead>${head}</thead><tbody>${body}</tbody></table>`;
+// ═══════════════════════════════════════════════════════════════
+// STEP 9: EXPORT
+// ═══════════════════════════════════════════════════════════════
+function renderStep9() {
+    if (!APP.data) return '<div class="card"><p>Veuillez d\'abord importer un fichier.</p></div>';
+
+    if (!APP.qualityReport) APP.qualityReport = analyzeQuality();
+    if (!APP.fairScore) APP.fairScore = computeFAIR();
+    if (!APP.aiScore) APP.aiScore = computeAI();
+    if (!APP.recommendations.length) APP.recommendations = generateRecos();
+
+    let html = `<div class="page-header"><h2>Étape 9 : Exporter la version finale</h2><p>Téléchargez votre dossier complet</p></div>`;
+
+    html += `<div class="metrics">
+        <div class="metric"><div class="val">${APP.data.length}</div><div class="label">Lignes</div></div>
+        <div class="metric"><div class="val">${APP.columns.length}</div><div class="label">Colonnes</div></div>
+        <div class="metric"><div class="val" style="color:${scoreColor(APP.fairScore.total/100)}">${APP.fairScore.total}/100</div><div class="label">Score FAIR</div></div>
+        <div class="metric"><div class="val" style="color:${APP.aiScore.level[1]}">${APP.aiScore.total}/100</div><div class="label">AI Readiness</div></div>
+    </div>`;
+
+    html += `<div class="card"><h3>Contenu du dossier d'export</h3>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:.5rem">
+            <div class="issue info">📄 Base de données corrigée (CSV)</div>
+            <div class="issue info">📋 Métadonnées (JSON)</div>
+            <div class="issue info">📖 Dictionnaire de données (CSV)</div>
+            <div class="issue info">🔍 Rapport qualité (JSON)</div>
+            <div class="issue info">📊 Score FAIR (JSON)</div>
+            <div class="issue info">🤖 Score AI Readiness (JSON)</div>
+            <div class="issue info">💡 Recommandations (JSON)</div>
+            <div class="issue info">📝 Historique des modifications (JSON)</div>
+            <div class="issue info">🌐 Rapport final complet (HTML)</div>
+        </div></div>`;
+
+    html += `<div style="display:flex;gap:1rem;flex-wrap:wrap;margin-top:1rem">
+        <button class="btn btn-primary" style="font-size:1.1rem;padding:.8rem 2rem" onclick="exportZip()">📦 Télécharger le dossier complet (ZIP)</button>
+        <button class="btn btn-secondary" onclick="exportCSV()">📄 Données corrigées (CSV)</button>
+        <button class="btn btn-secondary" onclick="exportHTML()">🌐 Rapport final (HTML)</button>
+    </div>`;
+
+    html += navButtons(8, null);
+    return html;
 }
 
-// ── Jauge canvas ─────────────────────────────────────────────
-function drawGauge(score) {
-  const c = document.getElementById('gaugeCanvas');
-  if (!c) return;
-  const ctx = c.getContext('2d');
-  ctx.clearRect(0, 0, 160, 100);
-  const cx = 80, cy = 95, r = 68;
-  ctx.beginPath(); ctx.arc(cx, cy, r, Math.PI, 0);
-  ctx.strokeStyle = '#EFF2F7'; ctx.lineWidth = 14; ctx.stroke();
-  const col = score <= 39 ? '#DC2626' : score <= 69 ? '#D97706' : '#059669';
-  const end = Math.PI + (score / 100) * Math.PI;
-  ctx.beginPath(); ctx.arc(cx, cy, r, Math.PI, end);
-  ctx.strokeStyle = col; ctx.lineWidth = 14; ctx.stroke();
-  ctx.fillStyle = '#0F172A';
-  ctx.font = '600 28px Outfit, sans-serif'; ctx.textAlign = 'center';
-  ctx.fillText(score, cx, cy - 20);
-  ctx.font = '400 12px Outfit, sans-serif'; ctx.fillStyle = '#64748B';
-  ctx.fillText('/100', cx, cy - 4);
+function dataToCSV() {
+    return Papa.unparse(APP.data, { columns: APP.columns });
 }
 
-// ── Tabs ─────────────────────────────────────────────────────
-function showTab(id) {
-  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
-  document.getElementById('panel-' + id).classList.add('active');
-  event.target.classList.add('active');
+function buildHTMLReport() {
+    const m = APP.metadata, q = APP.qualityReport, f = APP.fairScore, a = APP.aiScore;
+    let metaRows = Object.entries(m).filter(([k, v]) => v).map(([k, v]) => `<tr><td><strong>${k}</strong></td><td>${v}</td></tr>`).join('');
+    let varRows = APP.columns.map(c => {
+        const d = APP.variableDocs[c] || {};
+        return `<tr><td>${c}</td><td>${d.description || ''}</td><td>${d.data_type || ''}</td><td>${d.unit || ''}</td><td>${d.example || ''}</td></tr>`;
+    }).join('');
+    let fairRows = ['F','A','I','R'].map(l => {
+        const ratio = f.scores[l] / f.maxS[l];
+        return `<tr><td style="font-weight:bold">${l}</td><td style="color:${scoreColor(ratio)};font-weight:bold">${f.scores[l]}/${f.maxS[l]}</td></tr>`;
+    }).join('');
+    let aiRows = Object.entries(a.dims).map(([dim, s]) => {
+        const mx = a.maxD[dim], ratio = mx > 0 ? s / mx : 0;
+        return `<tr><td>${dim}</td><td style="color:${scoreColor(ratio)};font-weight:bold">${s}/${mx}</td></tr>`;
+    }).join('');
+    let recoRows = APP.recommendations.map(([p, t, d]) => {
+        const color = p === 'urgent' ? '#C62828' : p === 'important' ? '#FF6F00' : '#1B5E20';
+        return `<tr><td style="color:${color};font-weight:bold">${p.toUpperCase()}</td><td><strong>${t}</strong><br>${d}</td></tr>`;
+    }).join('');
+    let histRows = APP.editHistory.map(h => `<tr><td>${h.time}</td><td>${h.action}</td><td>${h.detail}</td></tr>`).join('');
+
+    return `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><title>Rapport AgriData Ready</title>
+<style>body{font-family:'Segoe UI',sans-serif;max-width:1000px;margin:0 auto;padding:2rem;color:#333}
+h1{color:#1B5E20;border-bottom:3px solid #4CAF50;padding-bottom:.5rem}h2{color:#2E7D32;margin-top:2rem}
+table{width:100%;border-collapse:collapse;margin:1rem 0}th{background:#1B5E20;color:#fff;padding:.6rem;text-align:left}
+td{padding:.5rem;border-bottom:1px solid #E0E0E0}tr:nth-child(even){background:#F5F5F5}
+.header{background:linear-gradient(135deg,#1B5E20,#43A047);color:#fff;padding:2rem;border-radius:12px;text-align:center}
+.header h1{color:#fff;border:none}.score-box{display:inline-block;padding:1rem 2rem;border-radius:10px;text-align:center;margin:.5rem;background:#E8F5E9;font-size:2rem;font-weight:800;color:#1B5E20}</style></head>
+<body><div class="header"><h1>AgriData Ready — Rapport Final</h1><p><em>From Raw Data to FAIR & AI-Ready Data</em></p>
+<p>Généré le ${new Date().toLocaleDateString('fr-FR')} à ${new Date().toLocaleTimeString('fr-FR')}</p></div>
+<h2>1. Métadonnées</h2><table><tr><th>Champ</th><th>Valeur</th></tr>${metaRows}</table>
+<h2>2. Aperçu</h2><p><strong>Lignes :</strong> ${APP.data.length} | <strong>Colonnes :</strong> ${APP.columns.length}</p>
+<h2>3. Rapport qualité</h2><p>Valeurs manquantes : ${q.totalMissing} (${q.missingPct}%) | Doublons : ${q.n_duplicates}</p>
+<h2>4. Dictionnaire de données</h2><table><tr><th>Variable</th><th>Description</th><th>Type</th><th>Unité</th><th>Exemple</th></tr>${varRows}</table>
+<h2>5. Score FAIR</h2><div class="score-box">${f.total}/100</div><table><tr><th>Principe</th><th>Score</th></tr>${fairRows}</table>
+<h2>6. Score AI Readiness</h2><div class="score-box">${a.total}/100</div><table><tr><th>Dimension</th><th>Score</th></tr>${aiRows}</table>
+<h2>7. Recommandations</h2><table><tr><th>Priorité</th><th>Recommandation</th></tr>${recoRows}</table>
+<h2>8. Historique des modifications</h2><table><tr><th>Heure</th><th>Action</th><th>Détail</th></tr>${histRows}</table>
+<hr><p style="text-align:center;color:#888;font-size:.8rem">AgriData Ready — From Raw Data to FAIR & AI-Ready Data</p></body></html>`;
 }
 
-// ── Export CSV ───────────────────────────────────────────────
 function exportCSV() {
-  if (!G.result) return;
-  const R = G.result;
-  const lines = [
-    ['AgriAI-Readiness — Rapport d\'analyse'],
-    ['Fichier', R.filename], ['Feuille', R.sheetName],
-    ['Date', new Date().toLocaleDateString('fr-FR')],
-    [''],
-    ['SCORE GLOBAL', R.total + '/100', 'Niveau : ' + R.niveau],
-    [''],
-    ['Dimension', 'Score', 'Max', 'Taux (%)'],
-    ['Complétude',     R.comp.score, 25, Math.round(R.comp.score/25*100)+'%'],
-    ['Cohérence',      R.cohe.score, 25, Math.round(R.cohe.score/25*100)+'%'],
-    ['Documentation',  R.docu.score, 25, Math.round(R.docu.score/25*100)+'%'],
-    ['Interopérabilité',R.inte.score,25, Math.round(R.inte.score/25*100)+'%'],
-    [''],
-    ['SOUS-CRITÈRES'],
-    ...[...R.comp.subs,...R.cohe.subs,...R.docu.subs,...R.inte.subs]
-      .map(s => [s.l, s.v, s.m, Math.round(s.v/s.m*100)+'%']),
-  ];
-  const csv = lines.map(l => l.map(v => `"${v}"`).join(',')).join('\n');
-  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = `rapport_agriai_${R.sheetName}.csv`; a.click();
+    const blob = new Blob([dataToCSV()], { type: 'text/csv;charset=utf-8;' });
+    saveAs(blob, 'donnees_corrigees.csv');
 }
 
-// ── Export JSON métadonnées ───────────────────────────────────
-function exportJSON() {
-  if (!G.result) return;
-  const R = G.result;
-  const meta = {
-    name: R.filename,
-    title: 'Dataset agricole analysé avec AgriAI-Readiness',
-    description: '',
-    created: new Date().toISOString(),
-    aiReadiness: {
-      total: R.total, niveau: R.niveau,
-      completude: R.comp.score, coherence: R.cohe.score,
-      documentation: R.docu.score, interoperabilite: R.inte.score,
-    },
-    fairRecommendations: {
-      license: 'CC-BY 4.0 — à attribuer',
-      doi: 'À obtenir via Zenodo (https://zenodo.org)',
-      dictionary: R.docu.hasDict ? 'Présent' : 'À créer',
-      readme: R.docu.hasReadme ? 'Présent' : 'À créer',
-    },
-    references: [
-      'Wilkinson et al. (2016) — FAIR Data Principles',
-      'Wang & Strong (1996) — Data Quality',
-      'Sambasivan et al. (2021) — Data-Centric AI',
-    ]
-  };
-  const blob = new Blob([JSON.stringify(meta, null, 2)], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = `metadata_${R.sheetName}.json`; a.click();
+function exportHTML() {
+    const blob = new Blob([buildHTMLReport()], { type: 'text/html;charset=utf-8;' });
+    saveAs(blob, 'rapport_final.html');
 }
+
+function exportZip() {
+    const zip = new JSZip();
+    zip.file('donnees_corrigees.csv', dataToCSV());
+    zip.file('metadonnees.json', JSON.stringify(APP.metadata, null, 2));
+
+    const dictRows = APP.columns.map(c => {
+        const d = APP.variableDocs[c] || {};
+        return { variable: c, ...d };
+    });
+    zip.file('dictionnaire_donnees.csv', Papa.unparse(dictRows));
+    zip.file('dictionnaire_donnees.json', JSON.stringify(APP.variableDocs, null, 2));
+
+    const qr = { ...APP.qualityReport };
+    qr.issues = qr.issues.map(i => ({ type: i.type, severity: i.severity, message: i.message }));
+    zip.file('rapport_qualite.json', JSON.stringify(qr, null, 2));
+    zip.file('score_fair.json', JSON.stringify({ total: APP.fairScore.total, scores: APP.fairScore.scores }, null, 2));
+    zip.file('score_ai_readiness.json', JSON.stringify({ total: APP.aiScore.total, dims: APP.aiScore.dims, level: APP.aiScore.level[0] }, null, 2));
+    zip.file('recommandations.json', JSON.stringify(APP.recommendations.map(([p, t, d]) => ({ priority: p, title: t, description: d })), null, 2));
+    zip.file('historique_modifications.json', JSON.stringify(APP.editHistory, null, 2));
+    zip.file('rapport_final.html', buildHTMLReport());
+
+    zip.generateAsync({ type: 'blob' }).then(blob => {
+        saveAs(blob, `agridata_ready_${new Date().toISOString().slice(0,10)}.zip`);
+    });
+}
+
+// ═══════════════════════════════════════════════════════════════
+// RENDER ENGINE
+// ═══════════════════════════════════════════════════════════════
+function renderStep() {
+    const container = document.getElementById('main-content');
+    const renderers = {
+        1: renderStep1, 2: renderStep2, 3: renderStep3, 4: renderStep4,
+        5: renderStep5, 6: renderStep6, 7: renderStep7, 8: renderStep8, 9: renderStep9
+    };
+    container.innerHTML = renderers[APP.step]();
+    updateFileInfo();
+
+    // Post-render hooks
+    if (APP.step === 4 && APP.data) setTimeout(() => renderDocForm(), 50);
+
+    // Drag and drop for step 1
+    if (APP.step === 1) {
+        const zone = document.getElementById('upload-zone');
+        if (zone) {
+            zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('dragover'); });
+            zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
+            zone.addEventListener('drop', e => { e.preventDefault(); zone.classList.remove('dragover'); if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]); });
+        }
+    }
+}
+
+// Init
+renderNav();
+renderStep();
 </script>
 </body>
 </html>
