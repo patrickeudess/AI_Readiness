@@ -328,6 +328,9 @@ function numericValues(col) {
 function addHistory(action, detail) {
     APP.editHistory.push({ time: new Date().toLocaleTimeString(), action, detail });
     APP.editCount++;
+    APP.qualityReport = null;
+    APP.fairScore = null;
+    APP.aiScore = null;
     updateFileInfo();
 }
 function pct(a, b) { return b > 0 ? Math.round(a / b * 1000) / 10 : 0; }
@@ -842,7 +845,9 @@ function saveMetadata() {
 // STEP 6: FAIR SCORE
 // ═══════════════════════════════════════════════════════════════
 function computeFAIR() {
-    const m = APP.metadata, d = APP.variableDocs, df = APP.data, cols = APP.columns;
+    const m = APP.metadata, df = APP.data, cols = APP.columns;
+    const d = {};
+    for (const c of cols) { if (APP.variableDocs[c]) d[c] = APP.variableDocs[c]; }
     const scores = { F: 0, A: 0, I: 0, R: 0 };
     const details = { F: [], A: [], I: [], R: [] };
     const maxS = { F: 25, A: 25, I: 25, R: 25 };
@@ -933,7 +938,9 @@ function renderStep6() {
 // STEP 7: AI READINESS
 // ═══════════════════════════════════════════════════════════════
 function computeAI() {
-    const df = APP.data, cols = APP.columns, m = APP.metadata, d = APP.variableDocs;
+    const df = APP.data, cols = APP.columns, m = APP.metadata;
+    const d = {};
+    for (const c of cols) { if (APP.variableDocs[c]) d[c] = APP.variableDocs[c]; }
     const dims = {}, details = {};
     const maxD = { 'Complétude': 20, 'Cohérence': 15, 'Documentation': 15, 'Qualité des variables': 15, 'Variable cible': 10, 'Structure': 15, 'Données sensibles': 10 };
 
@@ -1042,7 +1049,7 @@ function generateRecos() {
     const missingMeta = ['title','author','description','license','keywords','contact'].filter(f => !m[f]);
     if (missingMeta.length > 0) recos.push([missingMeta.length > 3 ? 'urgent' : 'important', 'Compléter les métadonnées', `Champs manquants : ${missingMeta.join(', ')}`]);
 
-    const nUndoc = APP.columns.length - Object.keys(APP.variableDocs).length;
+    const nUndoc = APP.columns.length - APP.columns.filter(c => APP.variableDocs[c]).length;
     if (nUndoc > 0) recos.push(['important', 'Documenter les variables', `${nUndoc} variable(s) non documentée(s).`]);
     if (!m.license) recos.push(['urgent', 'Ajouter une licence', 'CC-BY 4.0 est recommandée pour les données ouvertes.']);
 
