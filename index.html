@@ -1154,13 +1154,13 @@ function renderStep9() {
             <div class="issue info">🤖 Score AI Readiness (JSON)</div>
             <div class="issue info">💡 Recommandations (JSON)</div>
             <div class="issue info">📝 Historique des modifications (JSON)</div>
-            <div class="issue info">🌐 Rapport final complet (HTML)</div>
+            <div class="issue info">📝 Rapport des modifications (Word)</div>
         </div></div>`;
 
     html += `<div style="display:flex;gap:1rem;flex-wrap:wrap;margin-top:1rem">
         <button class="btn btn-primary" style="font-size:1.1rem;padding:.8rem 2rem" onclick="exportZip()">📦 Télécharger le dossier complet (ZIP)</button>
         <button class="btn btn-secondary" onclick="exportCSV()">📄 Données corrigées (CSV)</button>
-        <button class="btn btn-secondary" onclick="exportHTML()">🌐 Rapport final (HTML)</button>
+        <button class="btn btn-secondary" onclick="exportWord()">📝 Rapport des modifications (Word)</button>
     </div>`;
 
     html += navButtons(8, null);
@@ -1171,57 +1171,94 @@ function dataToCSV() {
     return Papa.unparse(APP.data, { columns: APP.columns });
 }
 
-function buildHTMLReport() {
-    const m = APP.metadata, q = APP.qualityReport, f = APP.fairScore, a = APP.aiScore;
-    let metaRows = Object.entries(m).filter(([k, v]) => v).map(([k, v]) => `<tr><td><strong>${k}</strong></td><td>${v}</td></tr>`).join('');
-    let varRows = APP.columns.map(c => {
-        const d = APP.variableDocs[c] || {};
-        return `<tr><td>${c}</td><td>${d.description || ''}</td><td>${d.data_type || ''}</td><td>${d.unit || ''}</td><td>${d.example || ''}</td></tr>`;
-    }).join('');
-    let fairRows = ['F','A','I','R'].map(l => {
-        const ratio = f.scores[l] / f.maxS[l];
-        return `<tr><td style="font-weight:bold">${l}</td><td style="color:${scoreColor(ratio)};font-weight:bold">${f.scores[l]}/${f.maxS[l]}</td></tr>`;
-    }).join('');
-    let aiRows = Object.entries(a.dims).map(([dim, s]) => {
-        const mx = a.maxD[dim], ratio = mx > 0 ? s / mx : 0;
-        return `<tr><td>${dim}</td><td style="color:${scoreColor(ratio)};font-weight:bold">${s}/${mx}</td></tr>`;
-    }).join('');
-    let recoRows = APP.recommendations.map(([p, t, d]) => {
-        const color = p === 'urgent' ? '#C62828' : p === 'important' ? '#FF6F00' : '#1B5E20';
-        return `<tr><td style="color:${color};font-weight:bold">${p.toUpperCase()}</td><td><strong>${t}</strong><br>${d}</td></tr>`;
-    }).join('');
-    let histRows = APP.editHistory.map(h => `<tr><td>${h.time}</td><td>${h.action}</td><td>${h.detail}</td></tr>`).join('');
+function buildWordReport() {
     const ini = APP.initialStats || {};
+    const m = APP.metadata;
     let curMissing = 0;
     for (const col of APP.columns) curMissing += countMissing(col);
     const curDup = countDuplicates();
+    const addedCols = APP.columns.filter(c => !ini.columns?.includes(c));
+    const removedCols = (ini.columns || []).filter(c => !APP.columns.includes(c));
+    const date = new Date().toLocaleDateString('fr-FR');
+    const time = new Date().toLocaleTimeString('fr-FR');
 
-    return `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><title>Rapport AgriData Ready</title>
-<style>body{font-family:'Segoe UI',sans-serif;max-width:1000px;margin:0 auto;padding:2rem;color:#333}
-h1{color:#1B5E20;border-bottom:3px solid #4CAF50;padding-bottom:.5rem}h2{color:#2E7D32;margin-top:2rem}
-table{width:100%;border-collapse:collapse;margin:1rem 0}th{background:#1B5E20;color:#fff;padding:.6rem;text-align:left}
-td{padding:.5rem;border-bottom:1px solid #E0E0E0}tr:nth-child(even){background:#F5F5F5}
-.header{background:linear-gradient(135deg,#1B5E20,#43A047);color:#fff;padding:2rem;border-radius:12px;text-align:center}
-.header h1{color:#fff;border:none}.score-box{display:inline-block;padding:1rem 2rem;border-radius:10px;text-align:center;margin:.5rem;background:#E8F5E9;font-size:2rem;font-weight:800;color:#1B5E20}</style></head>
-<body><div class="header"><h1>AgriData Ready — Rapport Final</h1><p><em>From Raw Data to FAIR & AI-Ready Data</em></p>
-<p>Généré le ${new Date().toLocaleDateString('fr-FR')} à ${new Date().toLocaleTimeString('fr-FR')}</p></div>
-<h2>1. Métadonnées</h2><table><tr><th>Champ</th><th>Valeur</th></tr>${metaRows}</table>
-<h2>2. Aperçu</h2><p><strong>Lignes :</strong> ${APP.data.length} | <strong>Colonnes :</strong> ${APP.columns.length}</p>
-<h2>3. Rapport qualité</h2><p>Valeurs manquantes : ${q.totalMissing} (${q.missingPct}%) | Doublons : ${q.n_duplicates}</p>
-<h2>4. Dictionnaire de données</h2><table><tr><th>Variable</th><th>Description</th><th>Type</th><th>Unité</th><th>Exemple</th></tr>${varRows}</table>
-<h2>5. Score FAIR</h2><div class="score-box">${f.total}/100</div><table><tr><th>Principe</th><th>Score</th></tr>${fairRows}</table>
-<h2>6. Score AI Readiness</h2><div class="score-box">${a.total}/100</div><table><tr><th>Dimension</th><th>Score</th></tr>${aiRows}</table>
-<h2>7. Recommandations</h2><table><tr><th>Priorité</th><th>Recommandation</th></tr>${recoRows}</table>
-<h2>8. Bilan des modifications</h2>
-<h3>Comparatif avant / après</h3>
-<table><tr><th>Indicateur</th><th>Avant</th><th>Après</th></tr>
-<tr><td>Lignes</td><td>${ini.rows || '—'}</td><td>${APP.data.length}</td></tr>
-<tr><td>Colonnes</td><td>${ini.cols || '—'}</td><td>${APP.columns.length}</td></tr>
-<tr><td>Valeurs manquantes</td><td>${ini.missing ?? '—'}</td><td>${curMissing}</td></tr>
-<tr><td>Doublons</td><td>${ini.duplicates ?? '—'}</td><td>${curDup}</td></tr></table>
-<h3>Journal des actions</h3>
-<table><tr><th>Heure</th><th>Action</th><th>Détail</th></tr>${histRows}</table>
-<hr><p style="text-align:center;color:#888;font-size:.8rem">AgriData Ready — From Raw Data to FAIR & AI-Ready Data</p></body></html>`;
+    let doc = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
+<head><meta charset="UTF-8"><title>Rapport des modifications</title>
+<!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View></w:WordDocument></xml><![endif]-->
+<style>
+body{font-family:'Calibri',sans-serif;color:#333;margin:2cm}
+h1{color:#1B5E20;font-size:20pt;border-bottom:2pt solid #4CAF50;padding-bottom:6pt}
+h2{color:#2E7D32;font-size:14pt;margin-top:18pt}
+h3{color:#555;font-size:12pt;margin-top:12pt}
+table{width:100%;border-collapse:collapse;margin:8pt 0}
+th{background:#1B5E20;color:#fff;padding:6pt 8pt;text-align:left;font-size:10pt}
+td{padding:5pt 8pt;border:1pt solid #ccc;font-size:10pt}
+tr:nth-child(even){background:#F5F5F5}
+p{font-size:11pt;line-height:1.5;margin:4pt 0}
+.subtitle{color:#666;font-style:italic;font-size:11pt}
+.highlight{background:#E8F5E9;padding:4pt 8pt;border-left:4pt solid #4CAF50;margin:8pt 0}
+</style></head><body>`;
+
+    doc += `<h1>Rapport des modifications — AgriData Ready</h1>`;
+    doc += `<p class="subtitle">From Raw Data to FAIR & AI-Ready Data</p>`;
+    doc += `<p><strong>Fichier traité :</strong> ${APP.fileName}</p>`;
+    doc += `<p><strong>Date :</strong> ${date} à ${time}</p>`;
+    if (m.author) doc += `<p><strong>Auteur :</strong> ${m.author}</p>`;
+
+    doc += `<h2>1. Description du fichier initial</h2>`;
+    doc += `<p>Le fichier <strong>${APP.fileName}</strong> contenait initialement :</p>`;
+    doc += `<ul>
+        <li><strong>${ini.rows || '?'}</strong> lignes</li>
+        <li><strong>${ini.cols || '?'}</strong> colonnes : ${(ini.columns || []).join(', ')}</li>
+        <li><strong>${ini.missing ?? '?'}</strong> valeurs manquantes</li>
+        <li><strong>${ini.duplicates ?? '?'}</strong> doublons</li>
+    </ul>`;
+
+    doc += `<h2>2. Comparatif avant / après</h2>`;
+    doc += `<table><tr><th>Indicateur</th><th>Avant</th><th>Après</th><th>Évolution</th></tr>`;
+    function evol(before, after, lowerIsBetter) {
+        const d = after - before;
+        if (d === 0) return '=';
+        const good = lowerIsBetter ? d < 0 : d > 0;
+        return (d > 0 ? '+' : '') + d + (good ? ' ✓' : ' ✗');
+    }
+    doc += `<tr><td>Lignes</td><td>${ini.rows}</td><td>${APP.data.length}</td><td>${evol(ini.rows, APP.data.length, false)}</td></tr>`;
+    doc += `<tr><td>Colonnes</td><td>${ini.cols}</td><td>${APP.columns.length}</td><td>${evol(ini.cols, APP.columns.length, false)}</td></tr>`;
+    doc += `<tr><td>Valeurs manquantes</td><td>${ini.missing}</td><td>${curMissing}</td><td>${evol(ini.missing, curMissing, true)}</td></tr>`;
+    doc += `<tr><td>Doublons</td><td>${ini.duplicates}</td><td>${curDup}</td><td>${evol(ini.duplicates, curDup, true)}</td></tr>`;
+    doc += `</table>`;
+    if (removedCols.length) doc += `<p>Colonnes supprimées : <strong>${removedCols.join(', ')}</strong></p>`;
+    if (addedCols.length) doc += `<p>Colonnes ajoutées : <strong>${addedCols.join(', ')}</strong></p>`;
+
+    doc += `<h2>3. Détail des actions effectuées</h2>`;
+    if (APP.editHistory.length === 0) {
+        doc += `<p><em>Aucune modification n'a été effectuée sur le fichier.</em></p>`;
+    } else {
+        doc += `<p>Au total, <strong>${APP.editHistory.length} action(s)</strong> ont été réalisées sur le fichier :</p>`;
+        doc += `<table><tr><th>N°</th><th>Heure</th><th>Action</th><th>Détail</th></tr>`;
+        APP.editHistory.forEach((h, i) => {
+            doc += `<tr><td>${i + 1}</td><td>${h.time}</td><td>${h.action}</td><td>${h.detail}</td></tr>`;
+        });
+        doc += `</table>`;
+
+        const actionSummary = {};
+        for (const h of APP.editHistory) {
+            actionSummary[h.action] = (actionSummary[h.action] || 0) + 1;
+        }
+        doc += `<h3>Résumé par type d'action</h3><ul>`;
+        for (const [action, count] of Object.entries(actionSummary)) {
+            doc += `<li>${action} : <strong>${count} fois</strong></li>`;
+        }
+        doc += `</ul>`;
+    }
+
+    doc += `<h2>4. État final du jeu de données</h2>`;
+    doc += `<div class="highlight"><p>Le fichier corrigé contient <strong>${APP.data.length} lignes</strong> et <strong>${APP.columns.length} colonnes</strong>.</p>`;
+    doc += `<p>Colonnes finales : ${APP.columns.join(', ')}</p></div>`;
+
+    doc += `<br><hr><p style="text-align:center;color:#888;font-size:9pt">Rapport généré par AgriData Ready — From Raw Data to FAIR & AI-Ready Data</p>`;
+    doc += `</body></html>`;
+    return doc;
 }
 
 function exportCSV() {
@@ -1229,9 +1266,9 @@ function exportCSV() {
     saveAs(blob, 'donnees_corrigees.csv');
 }
 
-function exportHTML() {
-    const blob = new Blob([buildHTMLReport()], { type: 'text/html;charset=utf-8;' });
-    saveAs(blob, 'rapport_final.html');
+function exportWord() {
+    const blob = new Blob(['﻿' + buildWordReport()], { type: 'application/msword;charset=utf-8;' });
+    saveAs(blob, 'rapport_modifications.doc');
 }
 
 function exportZip() {
@@ -1253,7 +1290,7 @@ function exportZip() {
     zip.file('score_ai_readiness.json', JSON.stringify({ total: APP.aiScore.total, dims: APP.aiScore.dims, level: APP.aiScore.level[0] }, null, 2));
     zip.file('recommandations.json', JSON.stringify(APP.recommendations.map(([p, t, d]) => ({ priority: p, title: t, description: d })), null, 2));
     zip.file('historique_modifications.json', JSON.stringify(APP.editHistory, null, 2));
-    zip.file('rapport_final.html', buildHTMLReport());
+    zip.file('rapport_modifications.doc', '﻿' + buildWordReport());
 
     zip.generateAsync({ type: 'blob' }).then(blob => {
         saveAs(blob, `agridata_ready_${new Date().toISOString().slice(0,10)}.zip`);
