@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AgriData Ready — From Raw Data to FAIR & AI-Ready Data</title>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌾</text></svg>">
+<title>AfriData Ready — From Raw Data to FAIR & AI-Ready Data</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌍</text></svg>">
 <script src="libs/papaparse.min.js"></script>
 <script src="libs/xlsx.full.min.js"></script>
 <script src="libs/jszip.min.js"></script>
@@ -145,7 +145,7 @@ body{flex-direction:column}
 <body>
 
 <nav class="sidebar">
-    <h1>🌾 AgriData Ready</h1>
+    <h1>🌍 AfriData Ready</h1>
     <p class="slogan">From Raw Data to FAIR & AI-Ready Data</p>
     <div id="nav-items"></div>
     <div class="file-info" id="file-info" style="display:none">
@@ -180,8 +180,10 @@ const APP = {
     aiScore: null,
     recommendations: [],
     editHistory: [],
-    editCount: 0
+    editCount: 0,
+    editPage: 0
 };
+const ROWS_PER_PAGE = 100;
 
 const STEPS = [
     'Importer les données',
@@ -676,17 +678,22 @@ function renderStep3() {
 
     // Tab: Edit cells
     html += `<div id="edit-cells" class="edit-tab">
-        <div class="card"><h3>Modifier les cellules (cliquez sur une valeur pour la modifier)</h3>
-        <div class="table-wrap"><table><tr>${APP.columns.map(c => `<th>${c}</th>`).join('')}<th>Suppr.</th></tr>`;
-    const maxRows = Math.min(50, APP.data.length);
-    for (let i = 0; i < maxRows; i++) {
-        html += '<tr>' + APP.columns.map(c => {
-            const v = APP.data[i][c] ?? '';
-            return `<td><input value="${String(v).replace(/"/g, '&quot;')}" onchange="editCell(${i},'${c.replace(/'/g, "\\'")}',this.value)"></td>`;
-        }).join('') + `<td><button class="btn btn-danger btn-sm" onclick="deleteRow(${i})">✕</button></td></tr>`;
+        <div class="card"><h3>Modifier les cellules (cliquez sur une valeur pour la modifier)</h3>`;
+    const nPages = Math.max(1, Math.ceil(APP.data.length / ROWS_PER_PAGE));
+    if (APP.editPage >= nPages) APP.editPage = nPages - 1;
+    const start = APP.editPage * ROWS_PER_PAGE;
+    const end = Math.min(start + ROWS_PER_PAGE, APP.data.length);
+    html += `<div id="edit-cells-table">${renderCellsTable(start, end)}</div>`;
+    if (nPages > 1) {
+        html += `<div style="display:flex;align-items:center;justify-content:center;gap:.8rem;margin-top:1rem">
+            <button class="btn btn-secondary btn-sm" onclick="changeEditPage(-1)" ${APP.editPage === 0 ? 'disabled' : ''}>← Précédent</button>
+            <span style="font-size:.85rem">Lignes <strong>${start + 1}</strong> à <strong>${end}</strong> sur <strong>${APP.data.length}</strong> (page ${APP.editPage + 1}/${nPages})</span>
+            <button class="btn btn-secondary btn-sm" onclick="changeEditPage(1)" ${APP.editPage >= nPages - 1 ? 'disabled' : ''}>Suivant →</button>
+        </div>`;
+    } else {
+        html += `<p style="text-align:center;color:#888;font-size:.82rem;margin-top:.6rem">${APP.data.length} ligne(s) au total</p>`;
     }
-    if (APP.data.length > 50) html += `<tr><td colspan="${APP.columns.length + 1}" style="text-align:center;color:#888;padding:.8rem">… ${APP.data.length - 50} lignes supplémentaires non affichées</td></tr>`;
-    html += '</table></div></div></div>';
+    html += '</div></div>';
 
     // Tab: Columns
     html += `<div id="edit-cols" class="edit-tab" style="display:none">
@@ -751,6 +758,28 @@ function showEditTab(id, el) {
     document.getElementById(id).style.display = 'block';
     document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
     el.classList.add('active');
+}
+
+function renderCellsTable(start, end) {
+    let h = `<div class="table-wrap"><table><tr><th style="width:50px">#</th>${APP.columns.map(c => `<th>${c}</th>`).join('')}<th>Suppr.</th></tr>`;
+    for (let i = start; i < end; i++) {
+        h += `<tr><td style="color:#888;font-size:.8rem">${i + 1}</td>` + APP.columns.map(c => {
+            const v = APP.data[i][c] ?? '';
+            return `<td><input value="${String(v).replace(/"/g, '&quot;')}" onchange="editCell(${i},'${c.replace(/'/g, "\\'")}',this.value)"></td>`;
+        }).join('') + `<td><button class="btn btn-danger btn-sm" onclick="deleteRow(${i})">✕</button></td></tr>`;
+    }
+    h += '</table></div>';
+    return h;
+}
+
+function changeEditPage(delta) {
+    APP.editPage += delta;
+    if (APP.editPage < 0) APP.editPage = 0;
+    renderStep();
+    const el = document.getElementById('edit-cells');
+    if (el) { el.style.display = 'block'; document.querySelectorAll('.tab').forEach(t => t.classList.remove('active')); document.querySelectorAll('.edit-tab').forEach(t => { if (t.id !== 'edit-cells') t.style.display = 'none'; }); }
+    const tabs = document.querySelectorAll('.tab');
+    if (tabs[0]) tabs[0].classList.add('active');
 }
 
 function editCell(rowIdx, col, val) {
@@ -1310,13 +1339,13 @@ function renderStep9() {
         ${APP.inputFormat === 'xlsx' ? `<div style="margin-bottom:.8rem"><label style="cursor:pointer;font-size:.88rem"><input type="checkbox" id="export-styling" style="margin-right:.4rem">Appliquer la mise en forme Excel (en-têtes colorés, colonnes ajustées)</label></div>` : ''}
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:.5rem">
             <div class="issue info">📄 Données corrigées (${fmtLabel})</div>
-            <div class="issue info">📋 Métadonnées (JSON)</div>
-            <div class="issue info">📖 Dictionnaire de données (CSV)</div>
-            <div class="issue info">🔍 Rapport qualité (JSON)</div>
-            <div class="issue info">📊 Score FAIR (JSON)</div>
-            <div class="issue info">🤖 Score AI Readiness (JSON)</div>
-            <div class="issue info">💡 Recommandations (JSON)</div>
-            <div class="issue info">📝 Historique des modifications (JSON)</div>
+            <div class="issue info">📋 Métadonnées (Excel)</div>
+            <div class="issue info">📖 Dictionnaire de données (Excel)</div>
+            <div class="issue info">🔍 Rapport qualité (Excel)</div>
+            <div class="issue info">📊 Score FAIR (Excel)</div>
+            <div class="issue info">🤖 Score AI Readiness (Excel)</div>
+            <div class="issue info">💡 Recommandations (Excel)</div>
+            <div class="issue info">📝 Historique des modifications (Excel)</div>
             <div class="issue info">📝 Rapport des modifications (Word)</div>
         </div></div>`;
 
@@ -1407,7 +1436,7 @@ p{font-size:11pt;line-height:1.5;margin:4pt 0}
 .highlight{background:#E8F5E9;padding:4pt 8pt;border-left:4pt solid #4CAF50;margin:8pt 0}
 </style></head><body>`;
 
-    doc += `<h1>Rapport des modifications — AgriData Ready</h1>`;
+    doc += `<h1>Rapport des modifications — AfriData Ready</h1>`;
     doc += `<p class="subtitle">From Raw Data to FAIR & AI-Ready Data</p>`;
     doc += `<p><strong>Fichier traité :</strong> ${APP.fileName}</p>`;
     doc += `<p><strong>Date :</strong> ${date} à ${time}</p>`;
@@ -1464,7 +1493,7 @@ p{font-size:11pt;line-height:1.5;margin:4pt 0}
     doc += `<div class="highlight"><p>Le fichier corrigé contient <strong>${APP.data.length} lignes</strong> et <strong>${APP.columns.length} colonnes</strong>.</p>`;
     doc += `<p>Colonnes finales : ${APP.columns.join(', ')}</p></div>`;
 
-    doc += `<br><hr><p style="text-align:center;color:#888;font-size:9pt">Rapport généré par AgriData Ready — From Raw Data to FAIR & AI-Ready Data</p>`;
+    doc += `<br><hr><p style="text-align:center;color:#888;font-size:9pt">Rapport généré par AfriData Ready — From Raw Data to FAIR & AI-Ready Data</p>`;
     doc += `</body></html>`;
     return doc;
 }
@@ -1472,6 +1501,14 @@ p{font-size:11pt;line-height:1.5;margin:4pt 0}
 function exportWord() {
     const blob = new Blob(['﻿' + buildWordReport()], { type: 'application/msword;charset=utf-8;' });
     saveAs(blob, 'rapport_modifications.doc');
+}
+
+// Convert an array of objects (rows) to an xlsx array buffer
+function rowsToExcel(rows, sheetName) {
+    const ws = XLSX.utils.json_to_sheet(rows.length ? rows : [{}]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, (sheetName || 'Feuille1').slice(0, 31));
+    return XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
 }
 
 function exportZip() {
@@ -1485,26 +1522,46 @@ function exportZip() {
     } else {
         zip.file('donnees_corrigees.csv', dataToCSV());
     }
-    zip.file('metadonnees.json', JSON.stringify(APP.metadata, null, 2));
 
+    // Métadonnées → Excel (Champ / Valeur)
+    const metaRows = Object.entries(APP.metadata).filter(([k, v]) => v !== undefined && v !== '')
+        .map(([k, v]) => ({ Champ: k, Valeur: v }));
+    zip.file('metadonnees.xlsx', rowsToExcel(metaRows, 'Métadonnées'));
+
+    // Dictionnaire des données → Excel
     const dictRows = APP.columns.map(c => {
         const d = APP.variableDocs[c] || {};
         return { variable: c, ...d };
     });
-    zip.file('dictionnaire_donnees.csv', Papa.unparse(dictRows));
-    zip.file('dictionnaire_donnees.json', JSON.stringify(APP.variableDocs, null, 2));
+    zip.file('dictionnaire_donnees.xlsx', rowsToExcel(dictRows, 'Dictionnaire'));
 
-    const qr = { ...APP.qualityReport };
-    qr.issues = qr.issues.map(i => ({ type: i.type, severity: i.severity, message: i.message }));
-    zip.file('rapport_qualite.json', JSON.stringify(qr, null, 2));
-    zip.file('score_fair.json', JSON.stringify({ total: APP.fairScore.total, scores: APP.fairScore.scores }, null, 2));
-    zip.file('score_ai_readiness.json', JSON.stringify({ total: APP.aiScore.total, dims: APP.aiScore.dims, level: APP.aiScore.level[0] }, null, 2));
-    zip.file('recommandations.json', JSON.stringify(APP.recommendations.map(([p, t, d]) => ({ priority: p, title: t, description: d })), null, 2));
-    zip.file('historique_modifications.json', JSON.stringify(APP.editHistory, null, 2));
+    // Rapport qualité → Excel
+    const qualityRows = APP.qualityReport.issues.map(i => ({ Type: i.type, Sévérité: i.severity, Message: i.message }));
+    zip.file('rapport_qualite.xlsx', rowsToExcel(qualityRows.length ? qualityRows : [{ Message: 'Aucun problème détecté' }], 'Qualité'));
+
+    // Score FAIR → Excel
+    const fairRows = Object.entries(APP.fairScore.scores).map(([k, v]) => ({ Principe: k, Score: v }));
+    fairRows.push({ Principe: 'TOTAL', Score: APP.fairScore.total + '/100' });
+    zip.file('score_fair.xlsx', rowsToExcel(fairRows, 'Score FAIR'));
+
+    // Score AI Readiness → Excel
+    const aiRows = Object.entries(APP.aiScore.dims).map(([k, v]) => ({ Dimension: k, Score: v }));
+    aiRows.push({ Dimension: 'TOTAL', Score: APP.aiScore.total + '/100' });
+    aiRows.push({ Dimension: 'Niveau', Score: APP.aiScore.level[0] });
+    zip.file('score_ai_readiness.xlsx', rowsToExcel(aiRows, 'AI Readiness'));
+
+    // Recommandations → Excel
+    const recoRows = APP.recommendations.map(([p, t, d]) => ({ Priorité: p, Recommandation: t, Description: d }));
+    zip.file('recommandations.xlsx', rowsToExcel(recoRows, 'Recommandations'));
+
+    // Historique des modifications → Excel
+    const histRows = APP.editHistory.map(h => ({ Heure: h.time, Action: h.action, Détail: h.detail }));
+    zip.file('historique_modifications.xlsx', rowsToExcel(histRows.length ? histRows : [{ Action: 'Aucune modification' }], 'Historique'));
+
     zip.file('rapport_modifications.doc', '﻿' + buildWordReport());
 
     zip.generateAsync({ type: 'blob' }).then(blob => {
-        saveAs(blob, `agridata_ready_${new Date().toISOString().slice(0,10)}.zip`);
+        saveAs(blob, `afridata_ready_${new Date().toISOString().slice(0,10)}.zip`);
     });
 }
 
