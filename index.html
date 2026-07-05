@@ -210,8 +210,11 @@ const APP = {
     mode: null,          // null (accueil) | 'quick' | 'project'
     projectId: null,
     projectName: '',
-    lastSaved: null
+    lastSaved: null,
+    aqiHistory: [],      // progression de l'AQI [{label, score}]
+    _assistCache: null
 };
+const AQI_TARGET = 90;
 const ROWS_PER_PAGE = 100;
 
 const STEPS = [
@@ -386,6 +389,8 @@ function onDataLoaded() {
     const bFair = computeFAIR().total, bAi = computeAI().total, bAqi = computeAQI().total;
     APP.baseline = { docs: 0, fair: bFair, ai: bAi, aqi: bAqi };
     APP.aqiScore = null;
+    APP.aqiHistory = [{ label: 'Initial', score: bAqi }];
+    APP._assistCache = null;
     updateFileInfo();
     renderNav();
     renderStep();
@@ -437,6 +442,7 @@ function addHistory(action, detail, justification) {
     APP.fairScore = null;
     APP.aiScore = null;
     APP.aqiScore = null;
+    APP._assistCache = null;
     updateFileInfo();
     scheduleAutosave();
 }
@@ -501,6 +507,7 @@ function renderStep1() {
             <div class="metric"><div class="val">${totalMissing}</div><div class="label">Valeurs manquantes</div></div>
             <div class="metric"><div class="val">${nDup}</div><div class="label">Doublons</div></div>
             ${APP.sheetNames.length > 1 ? `<div class="metric"><div class="val">${APP.sheetNames.length}</div><div class="label">Feuilles</div></div>` : ''}
+            ${APP.baseline ? `<div class="metric" style="border-top-color:var(--accent)"><div class="val" style="color:var(--accent)">${APP.baseline.aqi}/100</div><div class="label">AQI initial</div></div>` : ''}
         </div>`;
 
         html += `<div class="card"><h3>Aperçu des données</h3><div class="table-wrap"><table><tr>${APP.columns.map(c => `<th>${c}</th>`).join('')}</tr>`;
@@ -2113,6 +2120,26 @@ function svgMissingHeatmap() {
     return s;
 }
 
+function svgAqiProgress(history, current) {
+    const pts = [...history];
+    if (!pts.length || pts[pts.length - 1].score !== current) pts.push({ label: 'Actuel', score: current });
+    if (pts.length < 2) return '<p style="color:#888;font-size:.85rem">La progression s\'affichera au fil de vos corrections.</p>';
+    const W = 640, H = 220, padL = 36, padB = 40, padT = 16;
+    const sx = i => padL + (W - padL - 14) * i / (pts.length - 1);
+    const sy = v => padT + (H - padT - padB) * (1 - v / 100);
+    let grid = '';
+    for (const g of [0, 25, 50, 75, 100]) grid += `<line x1="${padL}" y1="${sy(g)}" x2="${W}" y2="${sy(g)}" stroke="#eee"/><text x="${padL - 5}" y="${sy(g) + 3}" text-anchor="end" font-size="9" fill="#999">${g}</text>`;
+    grid += `<line x1="${padL}" y1="${sy(AQI_TARGET)}" x2="${W}" y2="${sy(AQI_TARGET)}" stroke="#FF6F00" stroke-dasharray="5,4"/><text x="${W}" y="${sy(AQI_TARGET) - 4}" text-anchor="end" font-size="9" fill="#FF6F00">Objectif ${AQI_TARGET}</text>`;
+    const line = pts.map((p, i) => `${sx(i)},${sy(p.score)}`).join(' ');
+    let dots = '', labels = '';
+    pts.forEach((p, i) => {
+        dots += `<circle cx="${sx(i)}" cy="${sy(p.score)}" r="4" fill="#1B5E20"/><text x="${sx(i)}" y="${sy(p.score) - 8}" text-anchor="middle" font-size="10" font-weight="700" fill="#1B5E20">${p.score}</text>`;
+        labels += `<text x="${sx(i)}" y="${H - padB + 14}" text-anchor="middle" font-size="8.5" fill="#777" transform="rotate(25 ${sx(i)} ${H - padB + 14})">${p.label.slice(0, 14)}</text>`;
+    });
+    return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;max-width:700px">${grid}
+        <polyline points="${line}" fill="none" stroke="#4CAF50" stroke-width="2.5"/>${dots}${labels}</svg>`;
+}
+
 // ── Interprétations automatiques (phrases explicatives) ──
 function interpBox(lines) {
     if (!lines || !lines.length) return '';
@@ -2261,6 +2288,10 @@ function renderAnalysis() {
     html += interpBox(interpAQI(aqi));
     html += `<p class="small" style="color:#999;margin-top:.6rem;font-style:italic">Évaluation interne inspirée de standards internationaux : ne constitue pas une certification officielle.</p></div>`;
 
+    // Progression de l'AQI
+    html += `<div class="card"><h3>📈 Progression de l'AQI</h3>${svgAqiProgress(APP.aqiHistory, aqi.total)}
+        ${APP.aqiHistory.length > 1 || aqi.total !== (APP.aqiHistory[0] ? APP.aqiHistory[0].score : aqi.total) ? interpBox([`Vous êtes passé de <strong>${APP.aqiHistory[0] ? APP.aqiHistory[0].score : aqi.total}</strong> à <strong>${aqi.total}</strong> : ${aqi.total >= AQI_TARGET ? 'objectif atteint 🎉' : `encore ${AQI_TARGET - aqi.total} point(s) pour atteindre l'objectif de ${AQI_TARGET}`}.`]) : ''}</div>`;
+
     // Before / After
     html += `<div class="card"><h3>📈 Comparaison Avant / Après</h3>${svgBarCompare([
         { label: 'Valeurs manquantes', before: ini.missing ?? 0, after: curMiss, good: false, max: Math.max(ini.missing || 1, curMiss, 1) },
@@ -2316,6 +2347,241 @@ function renderReferentiel() {
     for (const [s, dom, use] of stds) html += `<tr><td><strong>${s}</strong></td><td>${dom}</td><td>${use}</td></tr>`;
     html += `</table></div></div>`;
     html += `<div class="issue warning" style="font-size:.9rem"><strong>⚠️ Avertissement important :</strong> Les évaluations produites par AfriData Ready (scores AQI, FAIR, AI Readiness) sont <strong>inspirées</strong> de ces standards internationaux mais constituent une <strong>évaluation interne automatisée</strong>. Elles ne constituent en aucun cas une certification officielle délivrée par un organisme accrédité.</div>`;
+    return html;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ASSISTANT AfriData : objectif AQI, gains simulés, corrections auto
+// Les gains affichés sont calculés par SIMULATION RÉELLE : l'action
+// est appliquée sur une copie de l'état, l'AQI recalculé, puis
+// l'état restauré. Jamais d'estimation codée en dur.
+// ═══════════════════════════════════════════════════════════════
+
+// Description automatique d'une variable (heuristique locale)
+function autoDescribe(col) {
+    const unitGuess = /_ha$|surface/i.test(col) ? 'hectares' : /_kg$|poids|weight/i.test(col) ? 'kg' : /pct|percent|taux/i.test(col) ? '%' : /date|annee|year/i.test(col) ? '' : '';
+    if (isNumericCol(col)) {
+        const v = numericValues(col);
+        if (v.length) {
+            const mn = Math.min(...v), mx = Math.max(...v);
+            const mean = v.reduce((s, x) => s + x, 0) / v.length;
+            return { description: `Variable numérique (min ${+mn.toFixed(2)}, max ${+mx.toFixed(2)}, moyenne ${+mean.toFixed(2)})${unitGuess ? ' : ' + unitGuess : ''} [suggestion automatique]`, data_type: 'Numérique', unit: unitGuess, example: String(v[0]) };
+        }
+    }
+    const vals = APP.data.map(r => r[col]).filter(v => !isNull(v)).map(String);
+    const uniq = [...new Set(vals)];
+    if (uniq.length) {
+        const isDate = /date|annee|year|mois/i.test(col);
+        return { description: `Variable ${isDate ? 'de date' : 'catégorielle'} (${uniq.length} modalité(s)${uniq.length <= 6 ? ' : ' + uniq.slice(0, 6).join(', ') : ''}) [suggestion automatique]`, data_type: isDate ? 'Date' : 'Texte/Catégorie', example: vals[0] };
+    }
+    return { description: 'Colonne vide [suggestion automatique]', data_type: 'Inconnu' };
+}
+
+// Simule une mutation, recalcule l'AQI, restaure l'état, retourne le score
+function simulateAQI(mutator) {
+    const snap = {
+        data: APP.data, columns: APP.columns, variableDocs: APP.variableDocs,
+        metadata: APP.metadata, editHistory: APP.editHistory, qualityReport: APP.qualityReport,
+        fairScore: APP.fairScore, aiScore: APP.aiScore
+    };
+    try {
+        mutator(); // doit produire de NOUVEAUX objets/tableaux, jamais muter les existants
+        // L'application réelle créera une entrée de journal (bonus traçabilité) : on la simule aussi
+        APP.editHistory = APP.editHistory.concat([{ sim: true }]);
+        APP.qualityReport = null; APP.fairScore = null; APP.aiScore = null;
+        APP.qualityReport = analyzeQuality();
+        APP.fairScore = computeFAIR();
+        APP.aiScore = computeAI();
+        return computeAQI().total;
+    } finally {
+        Object.assign(APP, snap);
+    }
+}
+
+// ── Mutateurs : version simulable (copie) et version appliquée ──
+function mutDropEmptyCols() {
+    const empty = APP.columns.filter(c => countMissing(c) === APP.data.length);
+    APP.columns = APP.columns.filter(c => !empty.includes(c));
+    return empty;
+}
+function mutDedupe() {
+    const seen = new Set();
+    APP.data = APP.data.filter(row => {
+        const key = APP.columns.map(c => String(row[c] ?? '')).join('|');
+        if (seen.has(key)) return false;
+        seen.add(key); return true;
+    });
+}
+function mutImputeMissing() {
+    const n = APP.data.length;
+    const fills = {};
+    for (const c of APP.columns) {
+        const m = countMissing(c);
+        if (m === 0 || m === n) continue; // colonnes complètes ou vides ignorées
+        if (isNumericCol(c)) {
+            const v = numericValues(c).sort((a, b) => a - b);
+            fills[c] = v.length % 2 ? v[(v.length - 1) / 2] : (v[v.length / 2 - 1] + v[v.length / 2]) / 2; // médiane
+        } else {
+            const freq = {};
+            for (const r of APP.data) { const x = r[c]; if (!isNull(x)) freq[x] = (freq[x] || 0) + 1; }
+            fills[c] = Object.entries(freq).sort((a, b) => b[1] - a[1])[0]?.[0]; // mode
+        }
+    }
+    APP.data = APP.data.map(r => {
+        let nr = null;
+        for (const c in fills) if (isNull(r[c])) { nr = nr || { ...r }; nr[c] = fills[c]; }
+        return nr || r;
+    });
+    return fills;
+}
+function mutAutoDoc() {
+    const docs = { ...APP.variableDocs };
+    const added = [];
+    for (const c of APP.columns) if (!docs[c] || !docs[c].description) { docs[c] = { ...(docs[c] || {}), ...autoDescribe(c) }; added.push(c); }
+    APP.variableDocs = docs;
+    return added;
+}
+function mutLicense() { APP.metadata = { ...APP.metadata, license: APP.metadata.license || 'CC-BY 4.0' }; }
+function mutMetaPlaceholder() {
+    const keys = ['title', 'author', 'description', 'keywords', 'version', 'contact', 'collection_method', 'geographic_area', 'citation', 'access_conditions'];
+    const m = { ...APP.metadata };
+    for (const k of keys) if (!m[k]) m[k] = '·';
+    APP.metadata = m;
+}
+
+// ── Catalogue d'actions : gains calculés par simulation ──
+function buildAssistantActions() {
+    const fp = [APP.editCount, APP.data.length, APP.columns.length, Object.keys(APP.variableDocs).length,
+        Object.values(APP.metadata).filter(Boolean).length].join('|');
+    if (APP._assistCache && APP._assistCache.fp === fp) return APP._assistCache;
+
+    APP.qualityReport = APP.qualityReport || analyzeQuality();
+    APP.fairScore = APP.fairScore || computeFAIR();
+    APP.aiScore = APP.aiScore || computeAI();
+    const current = computeAQI().total;
+    const n = APP.data.length;
+    const actions = [];
+
+    const emptyCols = APP.columns.filter(c => countMissing(c) === n);
+    if (emptyCols.length) actions.push({
+        id: 'empty', icon: '🗑️', label: `Supprimer ${emptyCols.length} colonne(s) vide(s)`,
+        why: `${emptyCols.join(', ')} : aucune information, dégrade la structure.`,
+        gain: simulateAQI(mutDropEmptyCols) - current, auto: true, manualStep: 3
+    });
+
+    if (countDuplicates() > 0) actions.push({
+        id: 'dup', icon: '♻️', label: `Supprimer ${countDuplicates()} doublon(s)`,
+        why: 'Des lignes identiques biaisent les statistiques et les modèles.',
+        gain: simulateAQI(mutDedupe) - current, auto: true, manualStep: 3
+    });
+
+    let totalMiss = 0; APP.columns.forEach(c => { const m = countMissing(c); if (m < n) totalMiss += m; });
+    if (totalMiss > 0) actions.push({
+        id: 'missing', icon: '🧩', label: `Imputer ${totalMiss} valeur(s) manquante(s)`,
+        why: 'Médiane pour les numériques, mode pour les catégorielles.',
+        gain: simulateAQI(mutImputeMissing) - current, auto: true, manualStep: 3
+    });
+
+    const undoc = APP.columns.filter(c => !APP.variableDocs[c] || !APP.variableDocs[c].description);
+    if (undoc.length) actions.push({
+        id: 'doc', icon: '📖', label: `Documenter ${undoc.length} variable(s) (suggestions auto)`,
+        why: 'Descriptions générées depuis les données, modifiables à l\'étape 4.',
+        gain: simulateAQI(mutAutoDoc) - current, auto: true, manualStep: 4
+    });
+
+    if (!APP.metadata.license) actions.push({
+        id: 'license', icon: '⚖️', label: 'Ajouter une licence (CC-BY 4.0)',
+        why: 'Sans licence, les données ne sont ni FAIR ni réutilisables.',
+        gain: simulateAQI(mutLicense) - current, auto: true, manualStep: 5
+    });
+
+    const metaMissing = ['title', 'author', 'description', 'keywords', 'contact'].filter(k => !APP.metadata[k]);
+    if (metaMissing.length) actions.push({
+        id: 'meta', icon: '📋', label: `Compléter ${metaMissing.length} métadonnée(s) clé(s)`,
+        why: `${metaMissing.join(', ')} : à renseigner vous-même (étape 5).`,
+        gain: simulateAQI(mutMetaPlaceholder) - current, auto: false, manualStep: 5
+    });
+
+    const result = { fp, current, actions: actions.filter(a => a.gain > 0).sort((a, b) => b.gain - a.gain).slice(0, 5) };
+    APP._assistCache = result;
+    return result;
+}
+
+function pushAqiHistory(label) {
+    const score = computeAQI().total;
+    const last = APP.aqiHistory[APP.aqiHistory.length - 1];
+    if (last && last.score === score) return;
+    APP.aqiHistory.push({ label, score });
+}
+
+// Applique réellement une action de l'assistant
+function applyAssistAction(id) {
+    if (id === 'empty') { const dropped = mutDropEmptyCols(); addHistory('Assistant : colonnes vides supprimées', dropped.join(', '), 'Correction automatique'); }
+    else if (id === 'dup') { const before = APP.data.length; mutDedupe(); addHistory('Assistant : doublons supprimés', `${before - APP.data.length} ligne(s)`, 'Correction automatique'); }
+    else if (id === 'missing') { const fills = mutImputeMissing(); addHistory('Assistant : valeurs manquantes imputées', Object.keys(fills).map(c => `${c}→${fills[c]}`).join(' ; '), 'Médiane/mode automatique'); }
+    else if (id === 'doc') { const added = mutAutoDoc(); addHistory('Assistant : variables documentées', `${added.length} suggestion(s) automatique(s)`, 'À relire à l\'étape 4'); }
+    else if (id === 'license') { mutLicense(); addHistory('Assistant : licence ajoutée', 'CC-BY 4.0', 'Correction automatique'); }
+    APP._assistCache = null;
+    pushAqiHistory('Assistant');
+    renderNav(); renderStep();
+}
+
+function applyAllAssistActions() {
+    const { actions } = buildAssistantActions();
+    for (const a of actions) if (a.auto) {
+        if (a.id === 'empty') mutDropEmptyCols();
+        else if (a.id === 'dup') mutDedupe();
+        else if (a.id === 'missing') mutImputeMissing();
+        else if (a.id === 'doc') mutAutoDoc();
+        else if (a.id === 'license') mutLicense();
+    }
+    addHistory('Assistant : correction automatique globale', actions.filter(a => a.auto).map(a => a.label).join(' ; '), 'Toutes les corrections auto');
+    APP._assistCache = null;
+    pushAqiHistory('Correction globale');
+    renderNav(); renderStep();
+}
+
+// ── Barre Objectif AQI (permanente en haut de chaque étape) ──
+function renderObjectiveBar() {
+    if (!APP.data || !APP.data.length) return '';
+    const { current, actions } = buildAssistantActions();
+    const remaining = Math.max(0, AQI_TARGET - current);
+    const ratio = clamp(current / AQI_TARGET, 0, 1);
+    const color = current >= AQI_TARGET ? '#1B5E20' : current >= 60 ? '#2E7D32' : current >= 40 ? '#F57F17' : '#C62828';
+    const totalGain = actions.reduce((s, a) => s + a.gain, 0);
+
+    let html = `<div class="card" style="border-left:5px solid ${color};margin-bottom:1.2rem">
+        <div style="display:flex;flex-wrap:wrap;align-items:center;gap:1rem;justify-content:space-between">
+            <div style="flex:1;min-width:220px">
+                <div style="font-size:.8rem;color:#888;font-weight:600">🎯 Objectif recommandé : AQI ≥ ${AQI_TARGET}</div>
+                <div style="background:#eee;border-radius:8px;height:14px;margin:.4rem 0;overflow:hidden">
+                    <div style="width:${ratio * 100}%;height:100%;background:${color};border-radius:8px;transition:width .4s"></div>
+                </div>
+                <div style="font-size:.85rem"><strong style="color:${color};font-size:1.05rem">AQI actuel : ${current}/100</strong>
+                ${current >= AQI_TARGET ? ' · 🎉 Objectif atteint !' : ` · encore <strong>${remaining} point(s)</strong> à gagner`}</div>
+            </div>`;
+    if (actions.length) {
+        html += `<button class="btn btn-primary" onclick="applyAllAssistActions()" title="Applique toutes les corrections automatiques">⚡ Tout corriger auto (+${actions.filter(a => a.auto).reduce((s, a) => s + a.gain, 0)})</button>`;
+    }
+    html += `</div>`;
+
+    if (actions.length) {
+        html += `<details style="margin-top:.6rem"><summary style="cursor:pointer;font-size:.88rem;font-weight:600;color:#2E7D32">💡 ${actions.length} action(s) prioritaire(s) : gain potentiel +${totalGain} point(s)</summary>
+        <div style="margin-top:.6rem">`;
+        for (const a of actions) {
+            html += `<div style="display:flex;flex-wrap:wrap;align-items:center;gap:.6rem;padding:.5rem .7rem;background:#f8faf8;border-radius:8px;margin:.3rem 0">
+                <span style="font-size:1.1rem">${a.icon}</span>
+                <div style="flex:1;min-width:200px"><strong style="font-size:.87rem">${a.label}</strong> <span style="color:${a.gain > 0 ? 'var(--primary)' : '#888'};font-weight:700">+${a.gain}</span><br>
+                <span style="font-size:.78rem;color:#777">${a.why}</span></div>
+                ${a.auto ? `<button class="btn btn-primary btn-sm" onclick="applyAssistAction('${a.id}')">✅ Corriger auto</button>` : ''}
+                <button class="btn btn-secondary btn-sm" onclick="goStep(${a.manualStep})">✏️ Manuel</button>
+            </div>`;
+        }
+        html += `</div></details>`;
+    } else if (current < AQI_TARGET) {
+        html += `<p style="font-size:.82rem;color:#888;margin-top:.4rem">Les points restants nécessitent des actions manuelles (métadonnées, documentation fine, anonymisation).</p>`;
+    }
+    html += `</div>`;
     return html;
 }
 
@@ -2383,7 +2649,8 @@ function serializeState() {
         inputFormat: APP.inputFormat, columns: APP.columns, fileName: APP.fileName,
         variableDocs: APP.variableDocs, metadata: APP.metadata,
         editHistory: APP.editHistory, editCount: APP.editCount,
-        sheetNames: APP.sheetNames, activeSheet: APP.activeSheet
+        sheetNames: APP.sheetNames, activeSheet: APP.activeSheet,
+        aqiHistory: APP.aqiHistory
     };
 }
 
@@ -2394,6 +2661,8 @@ function restoreState(s) {
     APP.variableDocs = s.variableDocs || {}; APP.metadata = s.metadata || {};
     APP.editHistory = s.editHistory || []; APP.editCount = s.editCount || 0;
     APP.sheetNames = s.sheetNames || []; APP.activeSheet = s.activeSheet || '';
+    APP.aqiHistory = s.aqiHistory || [];
+    APP._assistCache = null;
     APP.workbook = null;
     APP.qualityReport = null; APP.fairScore = null; APP.aiScore = null; APP.aqiScore = null;
     APP.editPage = 0;
@@ -2575,7 +2844,8 @@ function renderStep() {
         analysis: renderAnalysis, referentiel: renderReferentiel,
         welcome: renderWelcome, projects: renderProjects
     };
-    container.innerHTML = renderers[APP.step]();
+    const showBar = APP.data && APP.data.length && (typeof APP.step === 'number' || APP.step === 'analysis');
+    container.innerHTML = (showBar ? renderObjectiveBar() : '') + renderers[APP.step]();
     updateFileInfo();
 
     // Post-render hooks
