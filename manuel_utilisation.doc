@@ -1,0 +1,177 @@
+<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
+<head><meta charset="UTF-8"><title>Manuel d'utilisation : AfriData Ready</title>
+<!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View><w:Zoom>100</w:Zoom></w:WordDocument></xml><![endif]-->
+<style>
+body{font-family:'Calibri',sans-serif;color:#333;margin:2.2cm;line-height:1.5}
+h1{color:#1B5E20;font-size:24pt;text-align:center;margin-bottom:4pt}
+h2{color:#2E7D32;font-size:15pt;margin-top:20pt;border-bottom:1.5pt solid #4CAF50;padding-bottom:3pt}
+h3{color:#1B5E20;font-size:12.5pt;margin-top:12pt}
+p{font-size:11pt;margin:5pt 0}
+ul,ol{font-size:11pt;margin:5pt 0 5pt 18pt}
+li{margin:3pt 0}
+table{width:100%;border-collapse:collapse;margin:8pt 0}
+th{background:#1B5E20;color:#fff;padding:6pt 8pt;text-align:left;font-size:10.5pt}
+td{padding:5pt 8pt;border:1pt solid #ccc;font-size:10.5pt;vertical-align:top}
+tr:nth-child(even){background:#F5F5F5}
+.subtitle{color:#666;font-style:italic;font-size:12pt;text-align:center;margin-bottom:16pt}
+.box{background:#E8F5E9;padding:8pt 12pt;border-left:4pt solid #4CAF50;margin:8pt 0}
+.tip{background:#FFF8E1;padding:8pt 12pt;border-left:4pt solid #FF6F00;margin:8pt 0}
+.warn{background:#FDECEA;padding:8pt 12pt;border-left:4pt solid #C62828;margin:8pt 0}
+.step{background:#1B5E20;color:#fff;padding:2pt 9pt;border-radius:10pt;font-weight:bold;font-size:10.5pt}
+.center{text-align:center}
+.small{font-size:9.5pt;color:#888}
+</style></head><body>
+
+<h1>🌍 AfriData Ready</h1>
+<p class="subtitle">Manuel d'utilisation : From Raw Data to FAIR &amp; AI-Ready Data</p>
+
+<div class="box">
+<p><strong>Qu'est-ce qu'AfriData Ready ?</strong></p>
+<p>AfriData Ready est une application web gratuite qui vous accompagne, comme un assistant intelligent, pour transformer des données brutes (tous domaines : recherche, santé, agriculture, éducation, développement…) en un jeu de données propre, documenté, gouverné, conforme aux principes FAIR et prêt pour l'intelligence artificielle. Tout se passe dans votre navigateur : aucune installation, aucun compte, et vos données ne quittent jamais votre ordinateur.</p>
+</div>
+
+<h2>1. Accéder à l'application</h2>
+<ol>
+<li>Ouvrez votre navigateur (Chrome, Edge, Firefox, ou le navigateur de votre téléphone).</li>
+<li>Rendez-vous à l'adresse : <strong>https://patrickeudess.github.io/AfriData-Ready/</strong></li>
+<li>L'application se charge immédiatement, prête à l'emploi.</li>
+</ol>
+<div class="tip"><p>💡 <strong>Confidentialité :</strong> vos données restent 100 % sur votre machine. Rien n'est envoyé sur Internet.</p></div>
+
+<h2>2. Choisir son mode au démarrage</h2>
+<p>Au lancement, l'écran d'accueil propose deux modes :</p>
+<table>
+<tr><th>Mode</th><th>Pour qui ?</th></tr>
+<tr><td>🚀 <strong>Démarrage rapide</strong></td><td>Nettoyer un fichier en une seule session : importer, traiter, exporter. Aucun projet créé, aucune sauvegarde imposée.</td></tr>
+<tr><td>📂 <strong>Projet AfriData Ready</strong></td><td>Travailler sur plusieurs jours ou gérer plusieurs jeux de données : sauvegarde automatique sur votre ordinateur et reprise exacte plus tard.</td></tr>
+</table>
+<div class="tip"><p>💡 Un travail commencé en <strong>Démarrage rapide</strong> peut être converti en projet à tout moment (bouton « 💾 Enregistrer ce travail comme projet » dans le menu de gauche). Rien n'est perdu.</p></div>
+
+<h2>3. L'assistant et l'Objectif AQI</h2>
+<p>En haut de chaque étape, une barre permanente vous guide :</p>
+<ul>
+<li><strong>Objectif recommandé : AQI ≥ 90</strong> avec une barre de progression.</li>
+<li><strong>AQI actuel</strong> : le score global de qualité de votre jeu de données (sur 100), et le nombre de points restants.</li>
+<li><strong>Actions prioritaires</strong> : la liste des corrections les plus rentables, chacune avec le gain de points réel qu'elle apporte.</li>
+</ul>
+<p>Pour chaque action, deux possibilités :</p>
+<ul>
+<li>✅ <strong>Corriger auto</strong> : l'application applique la correction en un clic.</li>
+<li>✏️ <strong>Manuel</strong> : vous êtes redirigé vers l'étape concernée pour agir vous-même.</li>
+</ul>
+<p>Le bouton <strong>⚡ Tout corriger auto</strong> applique d'un coup toutes les corrections automatiques disponibles.</p>
+<div class="box"><p>🎯 <strong>Les gains affichés sont exacts :</strong> ils sont calculés en simulant réellement la correction, pas estimés. Après chaque action, l'AQI se recalcule et la progression se met à jour.</p></div>
+
+<h2>4. Le parcours en 8 étapes</h2>
+<table>
+<tr><th>Étape</th><th>Objectif</th></tr>
+<tr><td><span class="step">1</span> Importation</td><td>Charger le fichier et obtenir un premier diagnostic + l'AQI initial.</td></tr>
+<tr><td><span class="step">2</span> Qualité des données</td><td>Diagnostiquer et corriger : manquants, doublons, valeurs aberrantes, colonnes vides.</td></tr>
+<tr><td><span class="step">3</span> Documentation</td><td>Décrire chaque variable (avec suggestions automatiques).</td></tr>
+<tr><td><span class="step">4</span> Métadonnées</td><td>Renseigner titre, auteur, licence, mots-clés, DOI, etc.</td></tr>
+<tr><td><span class="step">5</span> FAIR</td><td>Évaluer et atteindre les critères Findable, Accessible, Interoperable, Reusable.</td></tr>
+<tr><td><span class="step">6</span> AI Readiness</td><td>Évaluer la préparation des données pour l'intelligence artificielle.</td></tr>
+<tr><td><span class="step">7</span> Gouvernance</td><td>Sécurité, pseudonymisation, provenance, traçabilité, versionnement.</td></tr>
+<tr><td><span class="step">8</span> Tableau de bord AQI</td><td>Score global, radar, jauge, progression et visualisations.</td></tr>
+</table>
+<p>L'export final (étape 9) produit le package complet.</p>
+
+<h2>5. Étape 1 : Importation</h2>
+<ol>
+<li>Cliquez sur la zone « Glissez-déposez un fichier ici », ou glissez votre fichier.</li>
+<li>Formats acceptés : <strong>CSV</strong>, <strong>Excel</strong> (.xlsx, .xls, y compris fichiers à plusieurs feuilles), <strong>JSON</strong>.</li>
+<li>L'application affiche aussitôt : nombre de lignes et de colonnes, types de variables, valeurs manquantes, doublons, un aperçu, et surtout l'<strong>AQI initial</strong> (ex. : 42/100).</li>
+</ol>
+
+<h2>6. Étape 2 : Qualité des données</h2>
+<p>Cette étape réunit le diagnostic et la correction. Trois onglets de diagnostic :</p>
+<ul>
+<li><strong>🔍 Problèmes :</strong> liste des anomalies avec taux de valeurs manquantes par colonne.</li>
+<li><strong>📊 Statistiques descriptives :</strong> moyenne, médiane, écart-type, min, quartiles, max pour chaque variable.</li>
+<li><strong>⚠️ Valeurs aberrantes :</strong> détection par la règle 1,5×IQR.</li>
+</ul>
+<h3>Corriger les valeurs aberrantes en un clic</h3>
+<p>Pour chaque colonne concernée, quatre boutons selon votre choix :</p>
+<table>
+<tr><th>Bouton</th><th>Effet</th><th>Conserve la ligne ?</th></tr>
+<tr><td>📉 Plafonner aux bornes</td><td>Ramène les valeurs extrêmes aux limites acceptables (winsorisation)</td><td>Oui</td></tr>
+<tr><td>📊 Remplacer par la médiane</td><td>Substitue chaque valeur aberrante par la médiane</td><td>Oui</td></tr>
+<tr><td>🧩 Mettre à vide</td><td>Transforme en valeur manquante (imputable ensuite)</td><td>Oui</td></tr>
+<tr><td>🗑️ Supprimer les lignes</td><td>Retire les lignes concernées (avec confirmation)</td><td>Non</td></tr>
+</table>
+<p>Plus bas, la section <strong>« Corriger les données »</strong> permet l'édition manuelle : modifier les cellules (par pages de 100 lignes), renommer/supprimer/standardiser les colonnes, traiter les valeurs manquantes (moyenne, médiane, mode, valeur personnalisée, suppression) et supprimer les doublons.</p>
+
+<h2>7. Étape 3 : Documentation des variables</h2>
+<p>Pour chaque colonne, renseignez la description, le type, l'unité, le format, la règle de validation, un exemple et des commentaires. L'application <strong>propose une description automatique</strong> déduite des données : vous pouvez l'accepter, la modifier ou la réécrire.</p>
+
+<h2>8. Étape 4 : Métadonnées</h2>
+<p>Complétez les informations générales : titre, auteur, organisation, licence, mots-clés, période, couverture géographique, contact, version, <strong>DOI</strong> (si disponible) et citation. Certaines valeurs sont suggérées automatiquement.</p>
+
+<h2>9. Étape 5 : Conformité FAIR</h2>
+<p>Le score FAIR est détaillé pour chaque principe (F, A, I, R). Pour chaque critère non atteint, l'application indique <strong>comment l'atteindre</strong> :</p>
+<ul>
+<li>✅ <strong>Corriger auto</strong> pour les champs déductibles (licence, version, conditions d'accès, citation, documentation).</li>
+<li>✏️ <strong>Renseigner / Documenter / Corriger</strong> pour vous rendre à la bonne étape.</li>
+</ul>
+<div class="tip"><p>💡 Certains critères FAIR (DOI pérenne, accès par protocole, indexation dans un catalogue) exigent de publier les données. AfriData Ready génère le fichier <strong>metadata_datacite.xml</strong> : déposez le package sur Zenodo, Dataverse ou OSF (gratuit) pour obtenir un DOI, puis reportez-le à l'étape 4.</p></div>
+
+<h2>10. Étape 6 : AI Readiness</h2>
+<p>Évalue la préparation à l'intelligence artificielle : structure, qualité des variables, présence d'une variable cible, encodage, équilibre des données, compatibilité Machine Learning. Des recommandations vous indiquent comment progresser.</p>
+
+<h2>11. Étape 7 : Gouvernance</h2>
+<p>Évalue la sécurité et la conformité :</p>
+<ul>
+<li><strong>Données personnelles :</strong> détection des colonnes identifiantes, avec bouton <strong>🔒 Pseudonymiser</strong> (les valeurs sont remplacées par des codes stables : les analyses restent possibles, l'identité est protégée).</li>
+<li><strong>Provenance</strong> et <strong>Data Lineage :</strong> chaque modification est tracée (date, étape, action, justification).</li>
+<li><strong>Versionnement :</strong> rappel de la version déclarée.</li>
+</ul>
+
+<h2>12. Étape 8 : Tableau de bord AQI</h2>
+<p>La synthèse visuelle de votre travail :</p>
+<ul>
+<li>Score AQI global (jauge) et équilibre des dimensions (radar).</li>
+<li><strong>Progression depuis le début :</strong> courbe montrant l'évolution de l'AQI après chaque correction.</li>
+<li>Comparaison avant / après, carte des valeurs manquantes, histogrammes, boxplots, matrice de corrélation, nuages de points, chacun accompagné d'une interprétation automatique.</li>
+</ul>
+<p>L'AQI agrège quatre dimensions : Qualité des données, FAIR &amp; Documentation, AI Readiness, Gouvernance.</p>
+
+<h2>13. Étape 9 : Exporter le Data Product</h2>
+<p>Cliquez sur « 📦 Télécharger le Data Product (ZIP) ». Le dossier contient notamment :</p>
+<ul>
+<li>Données corrigées (au même format que l'original) et données originales.</li>
+<li>Dictionnaire des variables, métadonnées (Excel, JSON, YAML, DataCite XML).</li>
+<li>Rapports qualité, FAIR, AI Readiness et AQI.</li>
+<li>Recommandations, journal des modifications (Data Lineage), README et fichier de citation.</li>
+<li>Rapport des modifications (Word) et <strong>certificat AQI</strong> imprimable en PDF.</li>
+</ul>
+<p>Vous pouvez aussi télécharger séparément les données corrigées, le certificat ou le rapport Word.</p>
+
+<h2>14. Le mode Projet en détail</h2>
+<ul>
+<li><strong>Créer un projet :</strong> depuis « 📂 Mes projets », donnez un nom et une description.</li>
+<li><strong>Sauvegarde automatique :</strong> après chaque modification et à chaque changement d'étape. Un bouton « 💾 Enregistrer maintenant » permet aussi une sauvegarde manuelle.</li>
+<li><strong>Reprendre :</strong> rouvrez l'application, allez dans « Mes projets », cliquez « Ouvrir » : tout est restauré (données, documentation, métadonnées, journal, étape en cours).</li>
+<li><strong>Transférer un projet :</strong> exportez-le en fichier <strong>.afridata</strong> (bouton 📤) pour l'importer sur un autre ordinateur (bouton « 📥 Importer un projet »).</li>
+</ul>
+<div class="warn"><p>⚠️ Les projets sont stockés dans le navigateur utilisé. Si vous changez de navigateur ou videz les données de navigation, ils sont perdus : pensez à exporter vos projets importants en fichier .afridata.</p></div>
+
+<h2>15. Référentiels et avertissement</h2>
+<p>La page « 📖 Référentiel utilisé » présente les standards mobilisés : ISO 8000, ISO/IEC 25012, ISO/IEC 11179, Dublin Core, DataCite, DCAT, principes FAIR, RGPD.</p>
+<div class="warn"><p>⚠️ Les scores AQI, FAIR et AI Readiness sont des évaluations internes inspirées de ces standards. Ils ne constituent pas une certification officielle délivrée par un organisme accrédité.</p></div>
+
+<h2>16. Questions fréquentes</h2>
+<h3>Mes données sont-elles envoyées quelque part ?</h3>
+<p>Non. Tout le traitement se fait dans votre navigateur.</p>
+<h3>Dois-je installer un logiciel ?</h3>
+<p>Non : un navigateur récent suffit.</p>
+<h3>L'application fonctionne-t-elle sur téléphone ?</h3>
+<p>Oui : sur mobile, le menu s'ouvre via le bouton ☰ en haut de l'écran.</p>
+<h3>Que faire des très grands fichiers ?</h3>
+<p>L'édition est paginée (100 lignes par page) et la sauvegarde locale gère de gros volumes. Pour un confort optimal, privilégiez toutefois des fichiers de taille raisonnable.</p>
+
+<br>
+<hr>
+<p class="center small">AfriData Ready : From Raw Data to FAIR &amp; AI-Ready Data<br>
+Mémoire DU Données : UCAD/EBAD : Patrick-Eudess Zatty ALLA : 2026</p>
+
+</body></html>
